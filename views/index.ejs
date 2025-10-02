@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Farmer Chatbot</title>
+<style>
+body{font-family:Arial;background:#f2f2f2;margin:0;padding:0;}
+.chat-container{max-width:650px;margin:30px auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);display:flex;flex-direction:column;}
+h2{text-align:center;color:#4CAF50;margin-bottom:15px;}
+.messages{max-height:500px;overflow-y:auto;margin-bottom:20px;display:flex;flex-direction:column;}
+.message{margin:8px 0;padding:10px;border-radius:20px;max-width:70%;word-wrap:break-word;position:relative;}
+.user{background:#dcf8c6;align-self:flex-end;text-align:right;border-bottom-right-radius:2px;}
+.assistant{background:#fff;color:#000;align-self:flex-start;text-align:left;border-bottom-left-radius:2px;}
+.timestamp{font-size:0.7em;color:gray;margin-top:4px;}
+form{display:flex;margin-bottom:5px;}
+input[type=text]{flex:1;padding:10px;border-radius:20px;border:1px solid #ccc;margin-right:10px;}
+button{padding:10px 20px;border-radius:20px;border:none;background:#4CAF50;color:white;cursor:pointer;margin-top:5px;}
+button:hover{background:#45a049;}
+#typing{font-style:italic;color:gray;display:none;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div class="chat-container">
+<h2>Farmer Chatbot</h2>
+<div class="messages" id="messages">
+<% messages.forEach(msg=>{ %>
+<div class="message <%=msg.role%>">
+<strong><%= msg.role==='user'?'You':'Assistant'%>:</strong> <%=msg.text%> (<%=msg.language%>)
+<div class="timestamp"><%= new Date(msg.createdAt).toLocaleString() %></div>
+</div>
+<% }) %>
+</div>
+<div id="typing">Assistant is typing...</div>
+<form id="chatForm">
+<input type="text" id="userInput" placeholder="Ask your question..." required>
+<button type="submit">Send</button>
+</form>
+<button id="startMic">🎤 Speak</button>
+<button id="newChat">🆕 New Chat</button>
+</div>
+
+<script>
+const form=document.getElementById('chatForm');
+const input=document.getElementById('userInput');
+const messagesDiv=document.getElementById('messages');
+const typingDiv=document.getElementById('typing');
+const startMic=document.getElementById('startMic');
+const newChat=document.getElementById('newChat');
+
+function appendMessage(role,text,dateTime){
+  const div=document.createElement('div');
+  div.className='message '+(role==='You'?'user':'assistant');
+  div.innerHTML=`<strong>${role}:</strong> ${text}
+  <div class="timestamp">${dateTime}</div>`;
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop=messagesDiv.scrollHeight;
+}
+
+function speak(text,lang='en-US'){
+  if(!text) return;
+  const utter=new SpeechSynthesisUtterance(text);
+  utter.lang=lang;
+  window.speechSynthesis.speak(utter);
+}
+
+async function getLocation(){
+  return new Promise(resolve=>{
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(
+        pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude}),
+        ()=>resolve(null)
+      );
+    }else resolve(null);
+  });
+}
+
+async function sendMessage(text){
+  appendMessage('You',text,new Date().toLocaleString());
+  input.value='';
+  typingDiv.style.display='block';
+  const location=await getLocation();
+  try{
+    const res=await fetch('/message',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text,role:'user',location})
+    });
+    const data=await res.json();
+    const reply=data.reply||"Sorry, I couldn't generate a reply.";
+    const dateTime = `${data.date || new Date().toLocaleDateString()} ${data.time || new Date().toLocaleTimeString()}`;
+    appendMessage('Assistant',reply,dateTime);
+    speak(reply);
+  }catch(err){
+    appendMessage('Assistant','Error getting reply.',new Date().toLocaleString());
+    console.error(err);
+  }finally{
+    typingDiv.style.display='none';
+  }
+}
+
+form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const text=input.value.trim();
+  if(!text) return;
+  await sendMessage(text);
+});
+
+startMic.addEventListener('click',()=>{
+  const recognition=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
+  recognition.lang='auto';
+  recognition.interimResults=false;
+  recognition.onresult=async event=>{
+    const text=event.results[0][0].transcript;
+    input.value=text;
+    await sendMessage(text);
+  };
+  recognition.start();
+});
+
+newChat.addEventListener('click',async ()=>{
+  await fetch('/new-chat',{method:'POST'});
+  messagesDiv.innerHTML='';
+});
+</script>
+</body>
+</html>
