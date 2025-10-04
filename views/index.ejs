@@ -1,125 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8" />
 <title>Farmer Chatbot</title>
 <style>
-body{font-family:Arial;background:#f2f2f2;margin:0;padding:0;}
-.chat-container{max-width:650px;margin:30px auto;background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);display:flex;flex-direction:column;}
-h2{text-align:center;color:#4CAF50;margin-bottom:15px;}
-.messages{max-height:500px;overflow-y:auto;margin-bottom:20px;display:flex;flex-direction:column;}
-.message{margin:8px 0;padding:10px;border-radius:20px;max-width:70%;word-wrap:break-word;position:relative;}
-.user{background:#dcf8c6;align-self:flex-end;text-align:right;border-bottom-right-radius:2px;}
-.assistant{background:#fff;color:#000;align-self:flex-start;text-align:left;border-bottom-left-radius:2px;}
-.timestamp{font-size:0.7em;color:gray;margin-top:4px;}
-form{display:flex;margin-bottom:5px;}
-input[type=text]{flex:1;padding:10px;border-radius:20px;border:1px solid #ccc;margin-right:10px;}
-button{padding:10px 20px;border-radius:20px;border:none;background:#4CAF50;color:white;cursor:pointer;margin-top:5px;}
-button:hover{background:#45a049;}
-#typing{font-style:italic;color:gray;display:none;margin-bottom:10px;}
+  body{font-family:Arial,system-ui;background:#f2f2f2;margin:0;padding:0;}
+  .chat-container{max-width:760px;margin:24px auto;background:#fff;padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.08);display:flex;flex-direction:column;}
+  h2{text-align:center;color:#2e7d32;margin:6px 0 12px;}
+  .status{display:flex;gap:12px;align-items:center;font-size:0.9rem;color:#444;margin-bottom:8px;flex-wrap:wrap;}
+  .messages{max-height:560px;overflow-y:auto;margin-bottom:12px;padding:8px;display:flex;flex-direction:column;gap:8px;}
+  .message{padding:10px 14px;border-radius:14px;max-width:78%;word-wrap:break-word;position:relative;}
+  .user{align-self:flex-end;background:#dcf8c6;text-align:right;border-bottom-right-radius:6px;}
+  .assistant{align-self:flex-start;background:#fff;border:1px solid #eee;color:#111;border-bottom-left-radius:6px;}
+  .meta{font-size:0.75rem;color:#666;margin-top:6px;}
+  form{display:flex;gap:8px;align-items:center;margin-top:6px;}
+  input[type=text]{flex:1;padding:10px 12px;border-radius:20px;border:1px solid #ccc;font-size:1rem;}
+  button{padding:10px 14px;border-radius:20px;border:none;background:#2e7d32;color:white;cursor:pointer;}
+  button.secondary{background:#4CAF50;}
+  #typing{font-style:italic;color:#777;display:none;margin-bottom:6px;}
+  select{padding:8px;border-radius:8px;border:1px solid #ccc;}
+  .small{font-size:0.85rem;color:#666;}
 </style>
 </head>
 <body>
 <div class="chat-container">
-<h2>Farmer Chatbot</h2>
-<div class="messages" id="messages">
-<% messages.forEach(msg=>{ %>
-<div class="message <%=msg.role%>">
-<strong><%= msg.role==='user'?'You':'Assistant'%>:</strong> <%=msg.text%> (<%=msg.language%>)
-<div class="timestamp"><%= new Date(msg.createdAt).toLocaleString() %></div>
-</div>
-<% }) %>
-</div>
-<div id="typing">Assistant is typing...</div>
-<form id="chatForm">
-<input type="text" id="userInput" placeholder="Ask your question..." required>
-<button type="submit">Send</button>
-</form>
-<button id="startMic">🎤 Speak</button>
-<button id="newChat">🆕 New Chat</button>
+  <h2>Farmer Chatbot</h2>
+
+  <div class="status">
+    <div id="locStatus" class="small">Location: detecting…</div>
+    <div id="weatherStatus" class="small"></div>
+    <div id="timeStatus" class="small"></div>
+    <div style="margin-left:auto">
+      Speak language:
+      <select id="langSelect" title="Override speech language">
+        <option value="auto">Auto (browser)</option>
+        <option value="en-US">English (en-US)</option>
+        <option value="hi-IN">Hindi (hi-IN)</option>
+        <option value="ta-IN">Tamil (ta-IN)</option>
+        <option value="te-IN">Telugu (te-IN)</option>
+        <option value="kn-IN">Kannada (kn-IN)</option>
+        <option value="fr-FR">French (fr-FR)</option>
+        <option value="es-ES">Spanish (es-ES)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="messages" id="messages">
+    <% messages.forEach(msg => { %>
+      <div class="message <%= msg.role %>">
+        <strong><%= msg.role === 'user' ? 'You' : 'Assistant' %>:</strong>
+        <div><%= msg.text %></div>
+        <div class="meta"><%= new Date(msg.createdAt).toLocaleString() %> (<%= msg.language %>)</div>
+      </div>
+    <% }) %>
+  </div>
+
+  <div id="typing">Assistant is typing...</div>
+
+  <form id="chatForm">
+    <input type="text" id="userInput" placeholder="Ask your question..." autocomplete="off" />
+    <button type="submit" id="sendBtn">Send</button>
+  </form>
+
+  <div style="display:flex;gap:8px;margin-top:8px;">
+    <button id="startMic" class="secondary">🎤 Speak</button>
+    <button id="newChat">🆕 New Chat</button>
+  </div>
 </div>
 
 <script>
-const form=document.getElementById('chatForm');
-const input=document.getElementById('userInput');
-const messagesDiv=document.getElementById('messages');
-const typingDiv=document.getElementById('typing');
-const startMic=document.getElementById('startMic');
-const newChat=document.getElementById('newChat');
+// DOM elements
+const messagesDiv = document.getElementById('messages');
+const chatForm = document.getElementById('chatForm');
+const userInput = document.getElementById('userInput');
+const typingDiv = document.getElementById('typing');
+const startMic = document.getElementById('startMic');
+const newChatBtn = document.getElementById('newChat');
+const locStatus = document.getElementById('locStatus');
+const weatherStatus = document.getElementById('weatherStatus');
+const timeStatus = document.getElementById('timeStatus');
+const langSelect = document.getElementById('langSelect');
 
-function appendMessage(role,text,dateTime){
-  const div=document.createElement('div');
-  div.className='message '+(role==='You'?'user':'assistant');
-  div.innerHTML=`<strong>${role}:</strong> ${text}
-  <div class="timestamp">${dateTime}</div>`;
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop=messagesDiv.scrollHeight;
+let currentLocation = null;
+let voicesReady = false;
+
+// --- Helper to escape HTML ---
+function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function appendMessage(role,text,meta){
+  const d = document.createElement('div');
+  d.className = 'message ' + (role==='You' ? 'user' : 'assistant');
+  d.innerHTML = `<strong>${role}:</strong><div>${escapeHtml(text).replace(/\n/g,'<br>')}</div>
+                 <div class="meta">${escapeHtml(meta || new Date().toLocaleString())}</div>`;
+  messagesDiv.appendChild(d);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-function speak(text,lang='en-US'){
-  if(!text) return;
-  const utter=new SpeechSynthesisUtterance(text);
-  utter.lang=lang;
-  window.speechSynthesis.speak(utter);
-}
-
-async function getLocation(){
+// --- Fetch browser voices and wait until loaded ---
+let availableVoices = [];
+function loadVoices(){
   return new Promise(resolve=>{
-    if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(
-        pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude}),
-        ()=>resolve(null)
-      );
-    }else resolve(null);
+    const synth = window.speechSynthesis;
+    let voices = synth.getVoices();
+    if(voices.length){
+      availableVoices = voices;
+      voicesReady = true;
+      resolve();
+    } else {
+      synth.onvoiceschanged = ()=>{
+        availableVoices = synth.getVoices();
+        voicesReady = true;
+        resolve();
+      };
+    }
   });
 }
 
-async function sendMessage(text){
-  appendMessage('You',text,new Date().toLocaleString());
-  input.value='';
-  typingDiv.style.display='block';
-  const location=await getLocation();
-  try{
-    const res=await fetch('/message',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text,role:'user',location})
-    });
-    const data=await res.json();
-    const reply=data.reply||"Sorry, I couldn't generate a reply.";
-    const dateTime = `${data.date || new Date().toLocaleDateString()} ${data.time || new Date().toLocaleTimeString()}`;
-    appendMessage('Assistant',reply,dateTime);
-    speak(reply);
-  }catch(err){
-    appendMessage('Assistant','Error getting reply.',new Date().toLocaleString());
-    console.error(err);
-  }finally{
-    typingDiv.style.display='none';
-  }
+// --- Preferred speech locale ---
+function getPreferredSpeechLocale(serverLocale){
+  const override = langSelect.value;
+  if(override && override !== 'auto') return override;
+  if(serverLocale) return serverLocale;
+  return navigator.language || 'en-US';
 }
 
-form.addEventListener('submit',async e=>{
-  e.preventDefault();
-  const text=input.value.trim();
+// --- Speak function with proper voice selection and slow rate ---
+function speak(text, locale){
   if(!text) return;
-  await sendMessage(text);
-});
+  try {
+    if(window.speechSynthesis && window.speechSynthesis.speaking){
+      window.speechSynthesis.cancel();
+    }
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = locale || navigator.language || 'en-US';
+    utter.rate = 0.8; // slow and clear
+    utter.pitch = 1;
 
-startMic.addEventListener('click',()=>{
-  const recognition=new (window.SpeechRecognition||window.webkitSpeechRecognition)();
-  recognition.lang='auto';
-  recognition.interimResults=false;
-  recognition.onresult=async event=>{
-    const text=event.results[0][0].transcript;
-    input.value=text;
-    await sendMessage(text);
+    const voices = window.speechSynthesis.getVoices();
+    if (voices && voices.length){
+      const prefix = (utter.lang || '').split('-')[0];
+      const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith(prefix));
+      if(voice) utter.voice = voice;
+    }
+    window.speechSynthesis.speak(utter);
+  }catch(e){ console.warn('Speech error', e); }
+}
+// --- Geolocation ---
+function getLocationPromise(timeout=8000){
+  return new Promise(resolve=>{
+    if(!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(pos=>{
+      resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+    }, err=>{ console.warn('Geolocation', err); resolve(null); }, { timeout });
+  });
+}
+
+// --- Send message to server ---
+async function sendMessage(text){
+  if(!text || !text.trim()) return;
+  appendMessage('You', text, new Date().toLocaleString());
+  userInput.value = '';
+  typingDiv.style.display = 'block';
+
+  const payload = { text, role: 'user', location: currentLocation };
+
+  try{
+    const res = await fetch('/message', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    const reply = data.reply || "Sorry, I couldn't generate a reply.";
+    const dateTime = `${data.weekday ? data.weekday+' ' : ''}${data.date || ''} ${data.time || ''}`.trim();
+
+    appendMessage('Assistant', reply + (data.weather ? `\n\n(${data.weather})` : ''), dateTime || new Date().toLocaleString());
+
+    // Speech locale
+    const speechLocale = getPreferredSpeechLocale(data.language || null);
+    speak(reply, speechLocale);
+
+    if(data.weather) weatherStatus.textContent = data.weather;
+    if(dateTime) timeStatus.textContent = dateTime;
+
+  } catch(err){
+    console.error('Error sending message', err);
+    appendMessage('Assistant', 'Error contacting server.', new Date().toLocaleString());
+  } finally { typingDiv.style.display = 'none'; }
+}
+
+// --- Auto-detect location & initial message ---
+async function initAutoDetect(){
+  locStatus.textContent = 'Location: detecting…';
+  currentLocation = await getLocationPromise();
+  if(!currentLocation){
+    locStatus.textContent = 'Location: unavailable (allow location for weather/time)';
+    return;
+  }
+  locStatus.textContent = `Location: ${currentLocation.lat.toFixed(4)}, ${currentLocation.lon.toFixed(4)}`;
+
+  const initialText = 'Please give me the current local date, time and temperature for my location.';
+  typingDiv.style.display = 'block';
+  try{
+    const res = await fetch('/message', {
+      method: 'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ text: initialText, role:'user', location: currentLocation })
+    });
+    const data = await res.json();
+    const reply = data.reply;
+    const dateTimeDisplay = `${data.weekday ? data.weekday+' ' : ''}${data.date || ''} ${data.time || ''}`.trim();
+    appendMessage('Assistant', reply + (data.weather ? `\n\n(${data.weather})` : ''), dateTimeDisplay || new Date().toLocaleString());
+
+    const speechLocale = getPreferredSpeechLocale(data.language || null);
+    speak(reply, speechLocale);
+
+    if(data.weather) weatherStatus.textContent = data.weather;
+    if(dateTimeDisplay) timeStatus.textContent = dateTimeDisplay;
+
+  }catch(err){
+    console.error('Initial /message error', err);
+    appendMessage('Assistant', `Unable to fetch local info: ${err.message || err}`, new Date().toLocaleString());
+  } finally { typingDiv.style.display = 'none'; }
+}
+
+// --- Speech-to-text (mic) ---
+startMic.addEventListener('click', async ()=>{
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!Rec){ alert('Speech recognition not supported.'); return; }
+  const rec = new Rec();
+  const recLang = (langSelect.value && langSelect.value!=='auto') ? langSelect.value : (navigator.language || 'en-US');
+  rec.lang = recLang;
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+
+  startMic.textContent = 'Listening...';
+  rec.onend = ()=> startMic.textContent = '🎤 Speak';
+  rec.onerror = e=> { console.warn('Rec error', e); startMic.textContent='🎤 Speak'; };
+
+  rec.onresult = async ev=>{
+    const t = ev.results[0][0].transcript;
+    userInput.value = t;
+    await sendMessage(t);
   };
-  recognition.start();
+  rec.start();
 });
 
-newChat.addEventListener('click',async ()=>{
-  await fetch('/new-chat',{method:'POST'});
-  messagesDiv.innerHTML='';
+// --- Form submit ---
+chatForm.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const t = userInput.value.trim();
+  if(!t) return;
+  await sendMessage(t);
+});
+
+// --- New chat ---
+newChatBtn.addEventListener('click', async ()=>{
+  if(!confirm('Clear chat history and memory?')) return;
+  try{
+    await fetch('/new-chat',{ method:'POST' });
+    messagesDiv.innerHTML = '';
+    weatherStatus.textContent='';
+    timeStatus.textContent='';
+  }catch(err){ console.error('Failed to clear chat', err); alert('Failed to clear chat.'); }
+});
+
+// --- Initialize ---
+window.addEventListener('load', async ()=>{
+  if(window.speechSynthesis) await loadVoices();
+  initAutoDetect();
 });
 </script>
 </body>
