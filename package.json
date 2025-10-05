@@ -19,12 +19,23 @@
     "express": "^5.1.0",
     "franc": "^6.2.0",
     "franc-min": "^6.2.0",
-    "mongoose": "^8.18.3",
+    "fs-extra": "^11.3.2",
+    "google-tts-api": "^2.0.2",
+    "gtts": "^0.2.1",
+    "mongoose": "^8.19.0",
     "node-fetch": "^3.3.2",
     "openai": "^6.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
   },
-  "description": ""
+  "description": "Interactive AI chatbot for farmers. Remembers user details, provides weather, local time, multilingual responses, and speaks out assistant replies. Built with Node.js, MongoDB, and Ollama Llama3.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/venkatnarayantl/Chatbot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/venkatnarayantl/Chatbot/issues"
+  },
+  "homepage": "https://github.com/venkatnarayantl/Chatbot#readme"
 }

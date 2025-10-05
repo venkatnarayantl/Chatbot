@@ -49,13 +49,13 @@
     <% messages.forEach(msg => { %>
       <div class="message <%= msg.role %>">
         <strong><%= msg.role === 'user' ? 'You' : 'Assistant' %>:</strong>
-        <div><%= msg.text %></div>
+        <div><%- msg.text.replace(/\n/g, '<br>') %></div>
         <div class="meta"><%= new Date(msg.createdAt).toLocaleString() %> (<%= msg.language %>)</div>
       </div>
     <% }) %>
   </div>
 
-  <div id="typing">Assistant is typing...</div>
+  <div id="typing">Assistant is preparing a voice reply...</div>
 
   <form id="chatForm">
     <input type="text" id="userInput" placeholder="Ask your question..." autocomplete="off" />
@@ -80,23 +80,45 @@ const locStatus = document.getElementById('locStatus');
 const weatherStatus = document.getElementById('weatherStatus');
 const timeStatus = document.getElementById('timeStatus');
 const langSelect = document.getElementById('langSelect');
+const sendBtn = document.getElementById('sendBtn');
 
 let currentLocation = null;
 let voicesReady = false;
+let availableVoices = [];
+let stopRequested = false;
 
 // --- Helper to escape HTML ---
 function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function appendMessage(role,text,meta){
+
+function appendMessage(role,text,meta, langCode){
   const d = document.createElement('div');
   d.className = 'message ' + (role==='You' ? 'user' : 'assistant');
+  const metaStr = escapeHtml(meta || new Date().toLocaleString()) + (langCode ? ` (${escapeHtml(langCode)})` : '');
   d.innerHTML = `<strong>${role}:</strong><div>${escapeHtml(text).replace(/\n/g,'<br>')}</div>
-                 <div class="meta">${escapeHtml(meta || new Date().toLocaleString())}</div>`;
+                 <div class="meta">${metaStr}</div>`;
   messagesDiv.appendChild(d);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// --- Fetch browser voices and wait until loaded ---
-let availableVoices = [];
+// --- Stop/Send button helpers ---
+function setSendAsStop(isStop){
+  if(isStop){
+    sendBtn.textContent = 'Stop';
+    sendBtn.style.background = '#f44336';
+  } else {
+    sendBtn.textContent = 'Send';
+    sendBtn.style.background = '#2e7d32';
+  }
+}
+
+function cancelOngoing(){
+  stopRequested = true;
+  if(window.speechSynthesis && window.speechSynthesis.speaking){
+    window.speechSynthesis.cancel();
+  }
+}
+
+// --- Fetch voices ---
 function loadVoices(){
   return new Promise(resolve=>{
     const synth = window.speechSynthesis;
@@ -123,149 +145,183 @@ function getPreferredSpeechLocale(serverLocale){
   return navigator.language || 'en-US';
 }
 
-// --- Speak function with proper voice selection and slow rate ---
-function speak(text, locale){
-  if(!text) return;
-  try {
-    if(window.speechSynthesis && window.speechSynthesis.speaking){
-      window.speechSynthesis.cancel();
-    }
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = locale || navigator.language || 'en-US';
-    utter.rate = 0.8; // slow and clear
-    utter.pitch = 1;
-
-    const voices = window.speechSynthesis.getVoices();
-    if (voices && voices.length){
-      const prefix = (utter.lang || '').split('-')[0];
-      const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith(prefix));
-      if(voice) utter.voice = voice;
-    }
-    window.speechSynthesis.speak(utter);
-  }catch(e){ console.warn('Speech error', e); }
+// --- Speak function ---
+function speakAndWait(text, locale){
+  return new Promise(resolve=>{
+    if(!text){ resolve(); return; }
+    try {
+      if(window.speechSynthesis && window.speechSynthesis.speaking){
+        window.speechSynthesis.cancel();
+      }
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = locale || navigator.language || 'en-US';
+      utter.rate = 0.95;
+      utter.pitch = 1;
+      const voices = window.speechSynthesis.getVoices();
+      if(voices && voices.length){
+        const prefix = (utter.lang || '').split('-')[0];
+        const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith(prefix));
+        if(voice) utter.voice = voice;
+      }
+      utter.onend = ()=> resolve();
+      utter.onerror = ()=> resolve();
+      window.speechSynthesis.speak(utter);
+    } catch(e){ resolve(); }
+  });
 }
+
 // --- Geolocation ---
 function getLocationPromise(timeout=8000){
   return new Promise(resolve=>{
     if(!navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(pos=>{
-      resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-    }, err=>{ console.warn('Geolocation', err); resolve(null); }, { timeout });
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      err => { console.warn('Geolocation error', err); resolve(null); },
+      { timeout }
+    );
   });
 }
 
-// --- Send message to server ---
-async function sendMessage(text){
-  if(!text || !text.trim()) return;
-  appendMessage('You', text, new Date().toLocaleString());
-  userInput.value = '';
-  typingDiv.style.display = 'block';
-
-  const payload = { text, role: 'user', location: currentLocation };
-
-  try{
-    const res = await fetch('/message', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-
-    const reply = data.reply || "Sorry, I couldn't generate a reply.";
-    const dateTime = `${data.weekday ? data.weekday+' ' : ''}${data.date || ''} ${data.time || ''}`.trim();
-
-    appendMessage('Assistant', reply + (data.weather ? `\n\n(${data.weather})` : ''), dateTime || new Date().toLocaleString());
-
-    // Speech locale
-    const speechLocale = getPreferredSpeechLocale(data.language || null);
-    speak(reply, speechLocale);
-
-    if(data.weather) weatherStatus.textContent = data.weather;
-    if(dateTime) timeStatus.textContent = dateTime;
-
-  } catch(err){
-    console.error('Error sending message', err);
-    appendMessage('Assistant', 'Error contacting server.', new Date().toLocaleString());
-  } finally { typingDiv.style.display = 'none'; }
-}
-
-// --- Auto-detect location & initial message ---
 async function initAutoDetect(){
   locStatus.textContent = 'Location: detecting…';
   currentLocation = await getLocationPromise();
   if(!currentLocation){
-    locStatus.textContent = 'Location: unavailable (allow location for weather/time)';
+    locStatus.textContent = 'Location: unavailable (allow location/time)';
     return;
   }
   locStatus.textContent = `Location: ${currentLocation.lat.toFixed(4)}, ${currentLocation.lon.toFixed(4)}`;
-
-  const initialText = 'Please give me the current local date, time and temperature for my location.';
-  typingDiv.style.display = 'block';
-  try{
-    const res = await fetch('/message', {
-      method: 'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ text: initialText, role:'user', location: currentLocation })
-    });
-    const data = await res.json();
-    const reply = data.reply;
-    const dateTimeDisplay = `${data.weekday ? data.weekday+' ' : ''}${data.date || ''} ${data.time || ''}`.trim();
-    appendMessage('Assistant', reply + (data.weather ? `\n\n(${data.weather})` : ''), dateTimeDisplay || new Date().toLocaleString());
-
-    const speechLocale = getPreferredSpeechLocale(data.language || null);
-    speak(reply, speechLocale);
-
-    if(data.weather) weatherStatus.textContent = data.weather;
-    if(dateTimeDisplay) timeStatus.textContent = dateTimeDisplay;
-
-  }catch(err){
-    console.error('Initial /message error', err);
-    appendMessage('Assistant', `Unable to fetch local info: ${err.message || err}`, new Date().toLocaleString());
-  } finally { typingDiv.style.display = 'none'; }
 }
 
-// --- Speech-to-text (mic) ---
+// --- Streaming function with Stop ---
+async function sendStreamed(text){
+  if(!text?.trim()) return;
+  appendMessage('You', text, new Date().toLocaleString());
+  userInput.value='';
+  typingDiv.style.display='block';
+  userInput.disabled = true;
+  setSendAsStop(true);
+  stopRequested = false;
+
+  const body = { prompt: text, role:'user', location: currentLocation, langOverride: langSelect.value };
+  const res = await fetch('/stream',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+
+  if(!res.ok){
+    appendMessage('Assistant',`Error: ${await res.text().catch(()=> 'Server error')}`, new Date().toLocaleString());
+    typingDiv.style.display='none';
+    userInput.disabled = false;
+    setSendAsStop(false);
+    return;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let fullReply = '';
+  let assistantLang = null;
+
+  const metaTime = new Date().toLocaleString();
+  const placeholder = document.createElement('div');
+  placeholder.className = 'message assistant';
+  placeholder.innerHTML = `<strong>Assistant:</strong><div></div><div class="meta">${escapeHtml(metaTime)}</div>`;
+  messagesDiv.appendChild(placeholder);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  const bodyDiv = placeholder.querySelector('div');
+
+  while(true){
+    if(stopRequested) break;
+    const { value, done } = await reader.read();
+    if(value){
+      buffer += decoder.decode(value, { stream:true });
+      let idx;
+      while((idx=buffer.indexOf('\n\n'))!==-1){
+        if(stopRequested) break;
+        const block = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx+2);
+        const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
+        const dataLine = lines.find(l=>l.startsWith('data:'));
+        if(!dataLine) continue;
+        const obj = JSON.parse(dataLine.replace(/^data:\s*/, ''));
+        if(obj.token){
+          assistantLang = assistantLang || obj.language || null;
+          fullReply += obj.token;
+        }
+        if(obj.error){
+          bodyDiv.innerHTML += `<br>Error: ${escapeHtml(obj.error)}`;
+        }
+      }
+    }
+    if(done || stopRequested) break;
+  }
+
+  if(!stopRequested){
+    const locale = getPreferredSpeechLocale(assistantLang);
+    await speakAndWait(fullReply.trim(), locale);
+  }
+
+  if(fullReply.trim()) bodyDiv.innerHTML += escapeHtml(fullReply.trim()).replace(/\n/g,'<br>') + '<br>';
+
+  typingDiv.style.display='none';
+  placeholder.dataset.finalized='true';
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  userInput.disabled = false;
+  setSendAsStop(false);
+}
+
+// --- Mic recognition ---
 startMic.addEventListener('click', async ()=>{
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!Rec){ alert('Speech recognition not supported.'); return; }
   const rec = new Rec();
-  const recLang = (langSelect.value && langSelect.value!=='auto') ? langSelect.value : (navigator.language || 'en-US');
+  const recLang = (langSelect.value && langSelect.value !== 'auto') ? langSelect.value : (navigator.language || 'en-US');
   rec.lang = recLang;
   rec.interimResults = false;
   rec.maxAlternatives = 1;
 
   startMic.textContent = 'Listening...';
   rec.onend = ()=> startMic.textContent = '🎤 Speak';
-  rec.onerror = e=> { console.warn('Rec error', e); startMic.textContent='🎤 Speak'; };
+  rec.onerror = ()=> startMic.textContent='🎤 Speak';
 
   rec.onresult = async ev=>{
     const t = ev.results[0][0].transcript;
-    userInput.value = t;
-    await sendMessage(t);
+    await sendStreamed(t);
   };
   rec.start();
 });
 
-// --- Form submit ---
-chatForm.addEventListener('submit', async e=>{
+// --- Send button click ---
+sendBtn.addEventListener('click', async e=>{
+  e.preventDefault();
+  if(sendBtn.textContent==='Stop'){
+    cancelOngoing();
+    return;
+  }
+  const t = userInput.value.trim();
+  if(t) await sendStreamed(t);
+});
+
+// --- Form submit (fallback) ---
+chatForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const t = userInput.value.trim();
-  if(!t) return;
-  await sendMessage(t);
+  if(t) await sendStreamed(t);
 });
 
 // --- New chat ---
 newChatBtn.addEventListener('click', async ()=>{
   if(!confirm('Clear chat history and memory?')) return;
-  try{
-    await fetch('/new-chat',{ method:'POST' });
+  try {
+    await fetch('/new-chat', { method: 'POST' });
     messagesDiv.innerHTML = '';
-    weatherStatus.textContent='';
-    timeStatus.textContent='';
-  }catch(err){ console.error('Failed to clear chat', err); alert('Failed to clear chat.'); }
+    weatherStatus.textContent = '';
+    timeStatus.textContent = '';
+  } catch (err) { alert('Failed to clear chat.'); }
 });
 
-// --- Initialize ---
+// --- Init ---
 window.addEventListener('load', async ()=>{
   if(window.speechSynthesis) await loadVoices();
   initAutoDetect();
