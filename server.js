@@ -1,4 +1,3 @@
-// server.js
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -183,6 +182,10 @@ Current context:
     let buffer = '';
     let fullReply = '';
 
+    // --- speech buffering for early TTS (emit sentence_partial every N words) ---
+    let speechBuffer = '';
+    const WORDS_THRESHOLD = 8; // change to 9 if you prefer ~9 words
+
     for await (const chunk of response.body) {
       const chunkText = decoder.decode(chunk, { stream: true });
       buffer += chunkText;
@@ -197,11 +200,34 @@ Current context:
           // Ollama sends newline-delimited JSON per chunk
           const parsed = JSON.parse(line);
           if (parsed.response) {
-            // send SSE token event
+            // send SSE token event (as before)
             res.write(`data: ${JSON.stringify({ token: parsed.response, language: speechLang })}\n\n`);
+            // append to fullReply
             fullReply += parsed.response;
+
+            // --- accumulate for speech partials ---
+            speechBuffer += parsed.response;
+            // normalize whitespace and split into words
+            const words = speechBuffer.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+
+            // emit chunks of WORDS_THRESHOLD words
+            while (words.length >= WORDS_THRESHOLD) {
+              const chunkWords = words.splice(0, WORDS_THRESHOLD);
+              const sentenceChunk = chunkWords.join(' ');
+              // remove emitted words from speechBuffer
+              speechBuffer = words.join(' ');
+              // emit sentence_partial SSE so client can speak this chunk immediately
+              try { res.write(`data: ${JSON.stringify({ sentence_partial: sentenceChunk, language: speechLang })}\n\n`); } catch (e) {}
+            }
           }
           if (parsed.done) {
+            // flush any remaining speechBuffer as a final partial before done
+            const leftover = (speechBuffer || '').trim();
+            if (leftover) {
+              try { res.write(`data: ${JSON.stringify({ sentence_partial: leftover, language: speechLang })}\n\n`); } catch(e) {}
+              speechBuffer = '';
+            }
+
             // save assistant message and close stream
             await Message.create({ text: fullReply, role: 'assistant', language: langCode, createdAt: new Date() });
             res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
@@ -214,23 +240,33 @@ Current context:
       }
     }
 
-    // if stream ends without done=true, flush remainder
+    // if stream ends without done=true, flush remainder (token-level)
     if (buffer) {
       try {
         const parsed = JSON.parse(buffer);
         if (parsed.response) {
           res.write(`data: ${JSON.stringify({ token: parsed.response, language: speechLang })}\n\n`);
           fullReply += parsed.response;
+
+          // also consider it for speechBuffer
+          speechBuffer += parsed.response;
         }
         if (parsed.done) {
-          await Message.create({ text: fullReply, role: 'assistant', language: langCode, createdAt: new Date() });
+          // nothing special here, done will be handled below
         }
       } catch (e) {
         // ignore
       }
     }
 
-    // fallback end
+    // flush any remaining speechBuffer at end-of-stream
+    const leftover = (speechBuffer || '').trim();
+    if (leftover) {
+      try { res.write(`data: ${JSON.stringify({ sentence_partial: leftover, language: speechLang })}\n\n`); } catch(e) {}
+      speechBuffer = '';
+    }
+
+    // fallback end - save assistant message if we have it
     if (fullReply) {
       await Message.create({ text: fullReply, role: 'assistant', language: langCode, createdAt: new Date() });
     }

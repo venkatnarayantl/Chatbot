@@ -2,161 +2,278 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Farmer Chatbot</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Farmer Chatbot — ChatGPT-style UI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
-  body{font-family:Arial,system-ui;background:#f2f2f2;margin:0;padding:0;}
-  .chat-container{max-width:760px;margin:24px auto;background:#fff;padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.08);display:flex;flex-direction:column;}
-  h2{text-align:center;color:#2e7d32;margin:6px 0 12px;}
-  .status{display:flex;gap:12px;align-items:center;font-size:0.9rem;color:#444;margin-bottom:8px;flex-wrap:wrap;}
-  .messages{max-height:560px;overflow-y:auto;margin-bottom:12px;padding:8px;display:flex;flex-direction:column;gap:8px;}
-  .message{padding:10px 14px;border-radius:14px;max-width:78%;word-wrap:break-word;position:relative;}
-  .user{align-self:flex-end;background:#dcf8c6;text-align:right;border-bottom-right-radius:6px;}
-  .assistant{align-self:flex-start;background:#fff;border:1px solid #eee;color:#111;border-bottom-left-radius:6px;}
-  .meta{font-size:0.75rem;color:#666;margin-top:6px;}
-  form{display:flex;gap:8px;align-items:center;margin-top:6px;}
-  input[type=text]{flex:1;padding:10px 12px;border-radius:20px;border:1px solid #ccc;font-size:1rem;}
-  button{padding:10px 14px;border-radius:20px;border:none;background:#2e7d32;color:white;cursor:pointer;}
-  button.secondary{background:#4CAF50;}
-  #typing{font-style:italic;color:#777;display:none;margin-bottom:6px;}
-  select{padding:8px;border-radius:8px;border:1px solid #ccc;}
-  .small{font-size:0.85rem;color:#666;}
+  :root{
+    --bg:#0b1220; --panel:#071427; --muted:#9fb0c8; --accent:#10b981; --glass: rgba(255,255,255,0.03);
+    --card:#071427; --bubble-user:#dcf8c6; --bubble-assist:#ffffff;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#071427 0%, #081628 100%);font-family:Inter,system-ui,Arial;color:#e8f0f6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .wrap{width:100%;max-width:1100px;display:grid;grid-template-columns:300px 1fr;gap:18px}
+  /* Sidebar */
+  .sidebar{background:var(--card);padding:16px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.03);box-shadow:0 12px 40px rgba(2,6,23,0.65)}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:800;color:#022}
+  .brand .title{font-size:16px;font-weight:700}
+  .sidebar .controls{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+  .btn.primary{background:var(--accent);color:#042}
+  select,input[type=text]{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:#e6f0f6}
+
+  /* Saved chats list */
+  .saved-list{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow:auto}
+  .saved-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+  .saved-item .title{font-size:13px;color:#e6f0f6}
+  .saved-item small{color:var(--muted);font-size:11px}
+  .saved-actions button{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px}
+
+  /* Main panel */
+  .panel{display:flex;flex-direction:column;gap:12px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  h2{margin:0;color:#c7f3d3}
+  .status{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:0.9rem}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.45)}
+  .messages{height:64vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+  .message{max-width:78%;padding:12px 14px;border-radius:14px;word-wrap:break-word;position:relative}
+  .user{align-self:flex-end;background:var(--bubble-user);color:#064;text-align:right;border-bottom-right-radius:6px;box-shadow:0 8px 20px rgba(16,185,129,0.06)}
+  .assistant{align-self:flex-start;background:var(--bubble-assist);color:#0b2535;border:1px solid #eee;border-bottom-left-radius:6px}
+  .meta{font-size:0.75rem;color:var(--muted);margin-top:8px}
+  .system-note{font-size:13px;color:var(--muted);padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.01);display:inline-block}
+
+  /* composer */
+  .composer{display:flex;gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--panel);border:1px solid rgba(255,255,255,0.03)}
+  #userInput{flex:1;padding:12px;border-radius:999px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#e6f0f6;outline:none}
+  .action-group{display:flex;gap:8px;align-items:center}
+  .small-btn{padding:10px;border-radius:10px;border:none;cursor:pointer;background:rgba(255,255,255,0.03);color:#e6f0f6}
+  .stop-btn{background:#ef4444;color:white;border-radius:10px;padding:10px 14px;border:none;cursor:pointer;font-weight:700;display:none}
+
+  /* formatted area */
+  .fullAnswer{margin-top:6px;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.02)}
+  .formatted{margin-top:8px;padding:10px;border-radius:8px;background:#fafafa;border:1px solid #eee;color:#081}
+  .summary{margin-top:6px;padding:8px;border-radius:8px;background:#fffbe6;border:1px solid #ffecb3;font-weight:700;color:#5a4b00}
+
+  @media (max-width:980px){
+    .wrap{grid-template-columns:1fr;padding:12px}
+    .sidebar{order:2}
+  }
 </style>
 </head>
 <body>
-<div class="chat-container">
-  <h2>Farmer Chatbot</h2>
-
-  <div class="status">
-    <div id="locStatus" class="small">Location: detecting…</div>
-    <div id="weatherStatus" class="small"></div>
-    <div id="timeStatus" class="small"></div>
-    <div style="margin-left:auto">
-      Speak language:
-      <select id="langSelect" title="Override speech language">
-        <option value="auto">Auto (browser)</option>
-        <option value="en-US">English (en-US)</option>
-        <option value="hi-IN">Hindi (hi-IN)</option>
-        <option value="ta-IN">Tamil (ta-IN)</option>
-        <option value="te-IN">Telugu (te-IN)</option>
-        <option value="kn-IN">Kannada (kn-IN)</option>
-        <option value="fr-FR">French (fr-FR)</option>
-        <option value="es-ES">Spanish (es-ES)</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="messages" id="messages">
-    <% messages.forEach(msg => { %>
-      <div class="message <%= msg.role %>">
-        <strong><%= msg.role === 'user' ? 'You' : 'Assistant' %>:</strong>
-        <div><%- msg.text.replace(/\n/g, '<br>') %></div>
-        <div class="meta"><%= new Date(msg.createdAt).toLocaleString() %> (<%= msg.language %>)</div>
+<div class="wrap">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="logo">F</div>
+      <div>
+        <div class="title">Farmer Chatbot</div>
+        <div style="font-size:12px;color:var(--muted)">Voice & Short Tips</div>
       </div>
-    <% }) %>
+    </div>
+
+    <div class="controls" style="margin-top:14px">
+      <button id="newChat" class="btn ghost">+ New chat</button>
+      <button id="saveChatBtn" class="btn ghost" title="Save current chat">💾 Save chat</button>
+      <button id="clearSavedBtn" class="btn ghost" title="Clear saved chats">🗑️ Clear saved</button>
+    </div>
+
+    <div style="margin-top:16px;font-size:13px;color:var(--muted);">Speak language (optional)</div>
+    <select id="langSelect" title="Override speech language" style="width:100%;margin-top:8px;background-color:#022;">
+      <option value="en-US">English (en-US)</option>
+      <option value="hi-IN">Hindi (hi-IN)</option>
+      <option value="ta-IN">Tamil (ta-IN)</option>
+      <option value="te-IN">Telugu (te-IN)</option>
+      <option value="kn-IN">Kannada (kn-IN)</option>
+      <option value="fr-FR">French (fr-FR)</option>
+      <option value="es-ES">Spanish (es-ES)</option>
+    </select>
+
+    <div style="margin-top:18px;font-size:13px;color:var(--muted)">Status</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+      <div id="locStatus" class="system-note">Location: detecting…</div>
+      <div id="weatherStatus" class="system-note" style="display:none"></div>
+      <div id="timeStatus" class="system-note" style="display:none"></div>
+    </div>
+
+    <div style="margin-top:14px;font-size:13px;color:var(--muted)">Saved chats</div>
+    <div id="savedList" class="saved-list"></div>
+    <div id="noSaved" style="margin-top:8px;color:var(--muted);font-size:13px">No saved chats yet</div>
   </div>
 
-  <div id="typing">Assistant is preparing a voice reply...</div>
+  <!-- Main panel -->
+  <div class="panel">
+    <div class="topbar">
+      <div style="display:flex;gap:12px;align-items:center">
+        <h2>Ask the Farmer AI</h2>
+        <div class="status"><div class="system-note">Short, crisp replies</div></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div id="typing" class="system-note" style="display:none">Assistant is preparing a voice reply...</div>
+      </div>
+    </div>
 
-  <form id="chatForm">
-    <input type="text" id="userInput" placeholder="Ask your question..." autocomplete="off" />
-    <button type="submit" id="sendBtn">Send</button>
-  </form>
+    <div class="card messages" id="messages">
+      <% messages.forEach(msg => { %>
+        <div class="message <%= msg.role %> <%= msg.role==='user' ? 'user' : 'assistant' %>">
+          <strong><%= msg.role === 'user' ? 'You' : 'Assistant' %>:</strong>
+          <div style="margin-top:8px"><%- msg.text.replace(/\n/g, '<br>') %></div>
+          <div class="meta"><%= new Date(msg.createdAt).toLocaleString() %> (<%= msg.language %>)</div>
+        </div>
+      <% }) %>
+    </div>
 
-  <div style="display:flex;gap:8px;margin-top:8px;">
-    <button id="startMic" class="secondary">🎤 Speak</button>
-    <button id="newChat">🆕 New Chat</button>
+    <div id="fullAnswerContainer" class="fullAnswer"></div>
+
+    <div class="composer">
+      <input type="text" id="userInput" placeholder="Ask your question..." autocomplete="off" />
+      <div class="action-group">
+        <button id="startMic" class="small-btn" title="Speak">🎤</button>
+        <button id="sendBtn" class="btn primary">Send</button>
+        <button id="stopBtn" class="stop-btn" title="Stop generation">Stop</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-// DOM elements
+// ===== DOM =====
 const messagesDiv = document.getElementById('messages');
-const chatForm = document.getElementById('chatForm');
 const userInput = document.getElementById('userInput');
 const typingDiv = document.getElementById('typing');
 const startMic = document.getElementById('startMic');
 const newChatBtn = document.getElementById('newChat');
+const saveChatBtn = document.getElementById('saveChatBtn');
+const clearSavedBtn = document.getElementById('clearSavedBtn');
+const savedList = document.getElementById('savedList');
+const noSaved = document.getElementById('noSaved');
 const locStatus = document.getElementById('locStatus');
 const weatherStatus = document.getElementById('weatherStatus');
 const timeStatus = document.getElementById('timeStatus');
 const langSelect = document.getElementById('langSelect');
 const sendBtn = document.getElementById('sendBtn');
+const stopBtn = document.getElementById('stopBtn');
+const fullAnswerContainer = document.getElementById('fullAnswerContainer');
 
 let currentLocation = null;
 let voicesReady = false;
 let availableVoices = [];
 let stopRequested = false;
+let currentFetchController = null;
 
-// --- Helper to escape HTML ---
+// language maps
+const normalizeMap = { eng:'en-US', hin:'hi-IN', tam:'ta-IN', tel:'te-IN', kn:'kn-IN', fra:'fr-FR', spa:'es-ES' };
+const languageFriendly = { 'en-US':'English', 'hi-IN':'Hindi', 'ta-IN':'Tamil', 'te-IN':'Telugu', 'kn-IN':'Kannada', 'fr-FR':'French', 'es-ES':'Spanish' };
+const unknownLangMsg = {
+  'en-US': "I don't know that language.",
+  'hi-IN': "मुझे वह भाषा नहीं आती।",
+  'ta-IN': "எனக்கு அந்த மொழி தெரியவில்லை.",
+  'te-IN': "నాకు ఆ భాష తెలియదు.",
+  'kn-IN': "ನನಗೆ ಆ ಭಾಷೆ ಗೊತ್ತಿಲ್ಲ.",
+  'fr-FR': "Je ne connais pas cette langue.",
+  'es-ES': "No conozco ese idioma."
+};
+
+function normalizeLang(code){
+  if(!code) return null;
+  code = String(code).trim();
+  if(code.includes('-')) return code;
+  if(normalizeMap[code]) return normalizeMap[code];
+  if(code.length===2){
+    const map2 = { en:'en-US', hi:'hi-IN', ta:'ta-IN', te:'te-IN', kn:'kn-IN', fr:'fr-FR', es:'es-ES' };
+    if(map2[code]) return map2[code];
+  }
+  return code;
+}
 function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+function prettyLangLabel(bcp){ if(!bcp) return ''; return languageFriendly[bcp] ? `${languageFriendly[bcp]} (${bcp})` : bcp; }
 
 function appendMessage(role,text,meta, langCode){
   const d = document.createElement('div');
   d.className = 'message ' + (role==='You' ? 'user' : 'assistant');
-  const metaStr = escapeHtml(meta || new Date().toLocaleString()) + (langCode ? ` (${escapeHtml(langCode)})` : '');
-  d.innerHTML = `<strong>${role}:</strong><div>${escapeHtml(text).replace(/\n/g,'<br>')}</div>
-                 <div class="meta">${metaStr}</div>`;
+  d.innerHTML = `<strong>${role}:</strong><div style="margin-top:8px">${escapeHtml(text).replace(/\n/g,'<br>')}</div>
+                 <div class="meta">${escapeHtml(meta || new Date().toLocaleString())} ${ langCode ? ` ${prettyLangLabel(normalizeLang(langCode))}` : ''}</div>`;
   messagesDiv.appendChild(d);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// --- Stop/Send button helpers ---
-function setSendAsStop(isStop){
-  if(isStop){
-    sendBtn.textContent = 'Stop';
-    sendBtn.style.background = '#f44336';
+// detect Indic script languages
+function detectScriptLocale(s){
+  if(!s) return null;
+  if(/[\u0900-\u097F]/.test(s)) return 'hi-IN';
+  if(/[\u0B80-\u0BFF]/.test(s)) return 'ta-IN';
+  if(/[\u0C00-\u0C7F]/.test(s)) return 'te-IN';
+  if(/[\u0C80-\u0CFF]/.test(s)) return 'kn-IN';
+  return null;
+}
+
+function setUiBusy(isBusy){
+  if(isBusy){
+    typingDiv.style.display='inline-block';
+    stopBtn.style.display='inline-block';
+    sendBtn.disabled = true;
+    userInput.disabled = true;
   } else {
-    sendBtn.textContent = 'Send';
-    sendBtn.style.background = '#2e7d32';
+    typingDiv.style.display='none';
+    stopBtn.style.display='none';
+    sendBtn.disabled = false;
+    userInput.disabled = false;
   }
 }
 
+/* STOP behavior: abort fetch, cancel TTS, clear queue, mark stopped bubble */
 function cancelOngoing(){
   stopRequested = true;
-  if(window.speechSynthesis && window.speechSynthesis.speaking){
-    window.speechSynthesis.cancel();
+
+  // abort server request
+  if(currentFetchController){ try{ currentFetchController.abort(); } catch(e){} currentFetchController=null; }
+
+  // cancel browser TTS
+  try { if(window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e){}
+
+  // clear TTS queue (defined later)
+  try { ttsQueue.length = 0; } catch(e){}
+
+  // annotate assistant's last bubble as stopped
+  const last = Array.from(messagesDiv.querySelectorAll('.message.assistant')).pop();
+  if(last){
+    const meta = last.querySelector('.meta');
+    if(meta && !meta.textContent.includes('(stopped)')) meta.textContent = `${meta.textContent} (stopped)`;
+  } else {
+    appendMessage('Assistant','(stopped)', new Date().toLocaleString());
   }
+  setUiBusy(false);
 }
 
-// --- Fetch voices ---
 function loadVoices(){
   return new Promise(resolve=>{
     const synth = window.speechSynthesis;
     let voices = synth.getVoices();
-    if(voices.length){
-      availableVoices = voices;
-      voicesReady = true;
-      resolve();
-    } else {
-      synth.onvoiceschanged = ()=>{
-        availableVoices = synth.getVoices();
-        voicesReady = true;
-        resolve();
-      };
-    }
+    if(voices.length){ availableVoices = voices; voicesReady = true; resolve(); }
+    else synth.onvoiceschanged = ()=>{ availableVoices = synth.getVoices(); voicesReady = true; resolve(); };
   });
 }
 
-// --- Preferred speech locale ---
 function getPreferredSpeechLocale(serverLocale){
   const override = langSelect.value;
   if(override && override !== 'auto') return override;
-  if(serverLocale) return serverLocale;
+  const normalized = normalizeLang(serverLocale);
+  if(normalized) return normalized;
   return navigator.language || 'en-US';
 }
 
-// --- Speak function ---
 function speakAndWait(text, locale){
   return new Promise(resolve=>{
     if(!text){ resolve(); return; }
     try {
-      if(window.speechSynthesis && window.speechSynthesis.speaking){
-        window.speechSynthesis.cancel();
-      }
+      // ensure previous utterances are cancelled so we don't overlap
+      if(window.speechSynthesis && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = locale || navigator.language || 'en-US';
-      utter.rate = 0.95;
-      utter.pitch = 1;
+      utter.rate = 0.95; utter.pitch = 1;
       const voices = window.speechSynthesis.getVoices();
       if(voices && voices.length){
         const prefix = (utter.lang || '').split('-')[0];
@@ -170,7 +287,38 @@ function speakAndWait(text, locale){
   });
 }
 
-// --- Geolocation ---
+// ---- TTS queue helpers (sequential speaking of partials) ----
+const ttsQueue = [];
+let ttsBusy = false;
+
+function enqueueTTS(text, locale){
+  if(!text || !text.trim()) return;
+  // do not enqueue if stop was requested (prevents old queue re-appearing)
+  if(stopRequested) return;
+  ttsQueue.push({ text: text.trim(), locale });
+  if(!ttsBusy) processTTSQueue();
+}
+
+async function processTTSQueue(){
+  if(ttsBusy) return;
+  ttsBusy = true;
+  while(ttsQueue.length){
+    if(stopRequested){
+      ttsQueue.length = 0;
+      break;
+    }
+    const item = ttsQueue.shift();
+    if(!item) continue;
+    try {
+      await speakAndWait(item.text, item.locale);
+      await new Promise(r => setTimeout(r, 80));
+    } catch(e){
+      if(stopRequested){ ttsQueue.length = 0; break; }
+    }
+  }
+  ttsBusy = false;
+}
+
 function getLocationPromise(timeout=8000){
   return new Promise(resolve=>{
     if(!navigator.geolocation) return resolve(null);
@@ -192,28 +340,81 @@ async function initAutoDetect(){
   locStatus.textContent = `Location: ${currentLocation.lat.toFixed(4)}, ${currentLocation.lon.toFixed(4)}`;
 }
 
-// --- Streaming function with Stop ---
+// short summary util
+function makeShortSummary(fullText){
+  if(!fullText) return '';
+  const sentences = fullText.trim().split(/(?<=[。.!?])\s+|(?<=\n)/u);
+  if(sentences && sentences[0] && sentences[0].length>10) return sentences[0].trim();
+  return fullText.trim().slice(0,120) + (fullText.length>120?'…':'');
+}
+
+function clearFormattedArea(){ fullAnswerContainer.innerHTML = ''; }
+
+/*
+  showFormattedAnswer(fullText, langBcp, showSummary=false)
+  - By default show only the formatted (full) reply and language label.
+  - If showSummary === true, also show the short summary (yellow box).
+  This prevents the short summary from appearing while speech is ongoing.
+*/
+function showFormattedAnswer(fullText, langBcp, showSummary = false){
+  clearFormattedArea();
+  const label = document.createElement('div'); label.className='meta'; label.style.marginTop='6px'; label.innerText = langBcp ? prettyLangLabel(langBcp) : '';
+  const f = document.createElement('div'); f.className='formatted'; f.innerText = fullText;
+  fullAnswerContainer.appendChild(label);
+  fullAnswerContainer.appendChild(f);
+  if(showSummary){
+    const s = document.createElement('div'); s.className='summary'; s.innerText = 'Short: ' + makeShortSummary(fullText);
+    fullAnswerContainer.appendChild(s);
+  }
+  fullAnswerContainer.scrollIntoView({ behavior:'smooth', block:'end' });
+}
+
+// --------- streaming function ----------
 async function sendStreamed(text){
   if(!text?.trim()) return;
+
+  // Ensure previous TTS + queue are cleared so old speech won't resume
+  try { ttsQueue.length = 0; } catch(e){}
+  try { if(window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e){}
+
   appendMessage('You', text, new Date().toLocaleString());
   userInput.value='';
-  typingDiv.style.display='block';
-  userInput.disabled = true;
-  setSendAsStop(true);
+  setUiBusy(true);
   stopRequested = false;
+  clearFormattedArea();
 
-  const body = { prompt: text, role:'user', location: currentLocation, langOverride: langSelect.value };
-  const res = await fetch('/stream',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
+  const scriptLocale = detectScriptLocale(text);
+  const langOverrideForRequest = scriptLocale || langSelect.value || 'auto';
+
+  const controller = new AbortController();
+  currentFetchController = controller;
+
+  const body = { prompt: text, role:'user', location: currentLocation, langOverride: langOverrideForRequest };
+  let res;
+  try{
+    res = await fetch('/stream',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body),
+      signal: controller.signal
+    });
+  }catch(err){
+    if(err.name === 'AbortError'){
+      // user cancelled locally
+      cancelOngoing();
+      return;
+    }
+    appendMessage('Assistant',`Error: ${err.message || 'Network error'}`, new Date().toLocaleString());
+    setUiBusy(false);
+    currentFetchController=null;
+    return;
+  }
 
   if(!res.ok){
-    appendMessage('Assistant',`Error: ${await res.text().catch(()=> 'Server error')}`, new Date().toLocaleString());
-    typingDiv.style.display='none';
-    userInput.disabled = false;
-    setSendAsStop(false);
+    const textErr = await res.text().catch(()=> 'Server error');
+    appendMessage('Assistant',`Error: ${textErr}`, new Date().toLocaleString());
+    setUiBusy(false);
+    currentFetchController=null;
     return;
   }
 
@@ -221,57 +422,132 @@ async function sendStreamed(text){
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
   let fullReply = '';
-  let assistantLang = null;
+  let assistantLangRaw = null;
 
   const metaTime = new Date().toLocaleString();
   const placeholder = document.createElement('div');
   placeholder.className = 'message assistant';
-  placeholder.innerHTML = `<strong>Assistant:</strong><div></div><div class="meta">${escapeHtml(metaTime)}</div>`;
+  placeholder.innerHTML = `<strong>Assistant:</strong><div class="assistant-body" style="margin-top:8px"></div><div class="meta">${escapeHtml(metaTime)}</div>`;
   messagesDiv.appendChild(placeholder);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  const bodyDiv = placeholder.querySelector('div');
+  const bodyDiv = placeholder.querySelector('.assistant-body');
 
-  while(true){
-    if(stopRequested) break;
-    const { value, done } = await reader.read();
-    if(value){
-      buffer += decoder.decode(value, { stream:true });
-      let idx;
-      while((idx=buffer.indexOf('\n\n'))!==-1){
-        if(stopRequested) break;
-        const block = buffer.slice(0, idx).trim();
-        buffer = buffer.slice(idx+2);
-        const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
-        const dataLine = lines.find(l=>l.startsWith('data:'));
-        if(!dataLine) continue;
-        const obj = JSON.parse(dataLine.replace(/^data:\s*/, ''));
-        if(obj.token){
-          assistantLang = assistantLang || obj.language || null;
-          fullReply += obj.token;
-        }
-        if(obj.error){
-          bodyDiv.innerHTML += `<br>Error: ${escapeHtml(obj.error)}`;
+  let currentText = '';
+
+  try{
+    while(true){
+      if(stopRequested) break;
+      const { value, done } = await reader.read();
+      if(value){
+        buffer += decoder.decode(value, { stream:true });
+        let idx;
+        while((idx = buffer.indexOf('\n\n')) !== -1){
+          if(stopRequested) break;
+          const block = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx+2);
+          const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
+          const dataLine = lines.find(l=>l.startsWith('data:'));
+          if(!dataLine) continue;
+          let obj;
+          try{
+            obj = JSON.parse(dataLine.replace(/^data:\s*/, ''));
+          }catch(e){
+            console.warn('Failed to parse SSE data', dataLine, e);
+            continue;
+          }
+
+          // token (visual streaming)
+          if(obj.token){
+            assistantLangRaw = assistantLangRaw || obj.language || null;
+            currentText += obj.token;
+            fullReply += obj.token;
+            bodyDiv.innerHTML = escapeHtml(currentText).replace(/\n/g,'<br>');
+            const assistantLangNorm = normalizeLang(assistantLangRaw);
+            if(assistantLangNorm){
+              const metaEl = placeholder.querySelector('.meta');
+              metaEl.textContent = `${escapeHtml(metaTime)} ${assistantLangNorm ? `(${prettyLangLabel(assistantLangNorm)})` : ''}`;
+            }
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+          }
+
+          // server-sent partial chunks for TTS (speak in parallel as they arrive)
+          if(obj.sentence_partial){
+            const localeToSpeak = getPreferredSpeechLocale(obj.language || assistantLangRaw);
+            enqueueTTS(obj.sentence_partial, localeToSpeak);
+          }
+
+          if(obj.error){
+            // treat server-side abort as normal stop
+            if(obj.error === 'aborted'){
+              stopRequested = true;
+              cancelOngoing();
+              break;
+            }
+            bodyDiv.innerHTML += `<br>Error: ${escapeHtml(obj.error)}`;
+          }
+
+          if(obj.done){
+            stopRequested = false;
+            currentFetchController = null;
+            bodyDiv.innerHTML = escapeHtml(currentText).replace(/\n/g,'<br>');
+
+            const trimmed = fullReply.trim();
+            const assistantNorm = normalizeLang(assistantLangRaw);
+
+            if(!trimmed){
+              const userLocale = scriptLocale || assistantNorm || (navigator.language || 'en-US');
+              const norm = normalizeLang(userLocale) || 'en-US';
+              const msg = unknownLangMsg[norm] || unknownLangMsg['en-US'];
+              appendMessage('Assistant', msg, metaTime, norm);
+              // final display + summary
+              showFormattedAnswer(msg, norm, true);
+              setUiBusy(false);
+              await speakAndWait(msg, norm);
+              return;
+            }
+
+            const assistantBcp = assistantNorm || scriptLocale || (navigator.language || 'en-US');
+            // show formatted reply; show summary because generation finished
+            showFormattedAnswer(fullReply.trim(), assistantBcp, true);
+
+            // Do not re-speak full reply (partials were spoken). If you prefer, call speakAndWait(fullReply.trim(), ...).
+            setUiBusy(false);
+            return;
+          }
         }
       }
+      if(done) break;
     }
-    if(done || stopRequested) break;
+  }catch(e){
+    if(e && e.name === 'AbortError'){
+      // normal if aborted
+    } else {
+      console.error('stream read error', e);
+      bodyDiv.innerHTML += `<br>Error during stream: ${escapeHtml(String(e.message || e))}`;
+    }
+  } finally {
+    currentFetchController = null;
   }
 
-  if(!stopRequested){
-    const locale = getPreferredSpeechLocale(assistantLang);
-    await speakAndWait(fullReply.trim(), locale);
+  // stream ended without explicit done
+  setUiBusy(false);
+  if(currentText.trim()){
+    bodyDiv.innerHTML = escapeHtml(currentText).replace(/\n/g,'<br>');
+    const assistantNorm = normalizeLang(assistantLangRaw);
+    showFormattedAnswer(fullReply.trim(), assistantNorm || scriptLocale || (navigator.language || 'en-US'), true);
+    const localeToSpeak = getPreferredSpeechLocale(assistantNorm);
+    await speakAndWait(fullReply.trim(), localeToSpeak);
+  } else {
+    const userLocale = scriptLocale || (navigator.language || 'en-US');
+    const norm = normalizeLang(userLocale) || 'en-US';
+    const msg = unknownLangMsg[norm] || unknownLangMsg['en-US'];
+    appendMessage('Assistant', msg, new Date().toLocaleString(), norm);
+    showFormattedAnswer(msg, norm, true);
+    await speakAndWait(msg, norm);
   }
-
-  if(fullReply.trim()) bodyDiv.innerHTML += escapeHtml(fullReply.trim()).replace(/\n/g,'<br>') + '<br>';
-
-  typingDiv.style.display='none';
-  placeholder.dataset.finalized='true';
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  userInput.disabled = false;
-  setSendAsStop(false);
 }
 
-// --- Mic recognition ---
+// mic
 startMic.addEventListener('click', async ()=>{
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!Rec){ alert('Speech recognition not supported.'); return; }
@@ -282,8 +558,8 @@ startMic.addEventListener('click', async ()=>{
   rec.maxAlternatives = 1;
 
   startMic.textContent = 'Listening...';
-  rec.onend = ()=> startMic.textContent = '🎤 Speak';
-  rec.onerror = ()=> startMic.textContent='🎤 Speak';
+  rec.onend = ()=> startMic.textContent = '🎤';
+  rec.onerror = ()=> startMic.textContent='🎤';
 
   rec.onresult = async ev=>{
     const t = ev.results[0][0].transcript;
@@ -292,36 +568,155 @@ startMic.addEventListener('click', async ()=>{
   rec.start();
 });
 
-// --- Send button click ---
+// send
 sendBtn.addEventListener('click', async e=>{
   e.preventDefault();
-  if(sendBtn.textContent==='Stop'){
-    cancelOngoing();
+  if(stopBtn.style.display !== 'none') return; // if streaming, ignore sends
+  const t = userInput.value.trim();
+  if(t) await sendStreamed(t);
+});
+
+// stop
+stopBtn.addEventListener('click', e=>{
+  e.preventDefault();
+  cancelOngoing();
+});
+
+// enter key handling
+document.addEventListener('keydown', async (e)=>{
+  if(e.key === 'Enter' && !e.shiftKey){
+    if(stopBtn.style.display !== 'none') return;
+    e.preventDefault();
+    const t = userInput.value.trim();
+    if(t) await sendStreamed(t);
+  }
+});
+
+// new chat
+newChatBtn.addEventListener('click', async ()=>{
+  if(!confirm('Clear chat history and memory (local view only)?')) return;
+  // clear DOM list (does not clear server stored messages)
+  messagesDiv.innerHTML = '';
+  fullAnswerContainer.innerHTML = '';
+});
+
+// ----------------- Saved chats (localStorage) -----------------
+const SAVED_KEY = 'farmer_chat_saved_sessions_v1';
+
+function loadSavedChats(){
+  try{
+    const raw = localStorage.getItem(SAVED_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){
+    return [];
+  }
+}
+
+function saveSavedChats(arr){
+  try{ localStorage.setItem(SAVED_KEY, JSON.stringify(arr)); } catch(e){}
+}
+
+function renderSavedList(){
+  const arr = loadSavedChats();
+  savedList.innerHTML = '';
+  if(!arr.length){
+    noSaved.style.display = 'block';
     return;
   }
-  const t = userInput.value.trim();
-  if(t) await sendStreamed(t);
+  noSaved.style.display = 'none';
+  // newest first
+  arr.slice().reverse().forEach(item=>{
+    const el = document.createElement('div');
+    el.className = 'saved-item';
+    el.innerHTML = `<div>
+                      <div class="title">${escapeHtml(item.title || 'Chat')}</div>
+                      <small>${escapeHtml(new Date(item.createdAt).toLocaleString())}</small>
+                    </div>
+                    <div class="saved-actions">
+                      <button title="Load" data-id="${item.id}" class="load-btn">▶</button>
+                      <button title="Delete" data-id="${item.id}" class="del-btn">✖</button>
+                    </div>`;
+    savedList.appendChild(el);
+  });
+
+  // attach events
+  Array.from(savedList.querySelectorAll('.load-btn')).forEach(b=>{
+    b.addEventListener('click', (ev)=>{
+      const id = b.getAttribute('data-id');
+      loadSavedChat(id);
+    });
+  });
+  Array.from(savedList.querySelectorAll('.del-btn')).forEach(b=>{
+    b.addEventListener('click', (ev)=>{
+      const id = b.getAttribute('data-id');
+      deleteSavedChat(id);
+    });
+  });
+}
+
+function saveCurrentChat(){
+  // read messages in DOM (user + assistant)
+  const nodes = Array.from(messagesDiv.querySelectorAll('.message'));
+  if(!nodes.length){
+    alert('Nothing to save — the chat is empty.');
+    return;
+  }
+  const items = nodes.map(n=>{
+    const role = n.classList.contains('user') ? 'user' : 'assistant';
+    const txt = n.querySelector('div') ? n.querySelector('div').innerText : n.innerText;
+    const meta = n.querySelector('.meta') ? n.querySelector('.meta').innerText : '';
+    return { role, text: txt, meta };
+  });
+  const arr = loadSavedChats();
+  const id = 's_' + Date.now();
+  const title = items.filter(i=>i.role==='user').slice(-1)[0]?.text?.slice(0,60) || 'Chat';
+  const entry = { id, title, createdAt: Date.now(), items };
+  arr.push(entry);
+  saveSavedChats(arr);
+  renderSavedList();
+  alert('Chat saved locally in sidebar.');
+}
+
+function loadSavedChat(id){
+  const arr = loadSavedChats();
+  const entry = arr.find(a=>a.id===id);
+  if(!entry){ alert('Saved chat not found'); return; }
+  // clear current view and render entry
+  messagesDiv.innerHTML = '';
+  entry.items.forEach(it=>{
+    const d = document.createElement('div');
+    d.className = 'message ' + (it.role === 'user' ? 'user' : 'assistant');
+    const created = (it.meta && it.meta.match(/\d{1,2}\/\d{1,2}\/\d{4}/)) ? it.meta : new Date().toLocaleString();
+    d.innerHTML = `<strong>${it.role === 'user' ? 'You' : 'Assistant'}:</strong>
+                   <div style="margin-top:8px">${escapeHtml(it.text).replace(/\n/g,'<br>')}</div>
+                   <div class="meta">${escapeHtml(created)}</div>`;
+    messagesDiv.appendChild(d);
+  });
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  fullAnswerContainer.innerHTML = '';
+}
+
+function deleteSavedChat(id){
+  let arr = loadSavedChats();
+  arr = arr.filter(a=>a.id!==id);
+  saveSavedChats(arr);
+  renderSavedList();
+}
+
+clearSavedBtn.addEventListener('click', ()=>{
+  if(!confirm('Delete all saved chats from localStorage?')) return;
+  localStorage.removeItem(SAVED_KEY);
+  renderSavedList();
 });
 
-// --- Form submit (fallback) ---
-chatForm.addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const t = userInput.value.trim();
-  if(t) await sendStreamed(t);
+saveChatBtn.addEventListener('click', ()=>{
+  saveCurrentChat();
 });
 
-// --- New chat ---
-newChatBtn.addEventListener('click', async ()=>{
-  if(!confirm('Clear chat history and memory?')) return;
-  try {
-    await fetch('/new-chat', { method: 'POST' });
-    messagesDiv.innerHTML = '';
-    weatherStatus.textContent = '';
-    timeStatus.textContent = '';
-  } catch (err) { alert('Failed to clear chat.'); }
-});
+// init saved list
+renderSavedList();
 
-// --- Init ---
+// ----------------- init -----------------
 window.addEventListener('load', async ()=>{
   if(window.speechSynthesis) await loadVoices();
   initAutoDetect();
