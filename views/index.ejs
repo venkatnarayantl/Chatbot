@@ -6,72 +6,59 @@
 <title>Farmer Chatbot — ChatGPT-style UI</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0b1220; --panel:#071427; --muted:#9fb0c8; --accent:#10b981; --glass: rgba(255,255,255,0.03);
-    --card:#071427; --bubble-user:#dcf8c6; --bubble-assist:#ffffff;
-    --radius:12px;
-  }
+  :root{ --bg:#071427; --panel:#0b1522; --muted:#9fb0c8; --accent:#10b981; --glass: rgba(255,255,255,0.03); --card:#071427; --bubble-user:#dcf8c6; --bubble-assist:#ffffff; --radius:12px; }
   *{box-sizing:border-box}
-  body{margin:0;background:linear-gradient(180deg,#071427 0%, #081628 100%);font-family:Inter,system-ui,Arial;color:#e8f0f6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-  .wrap{width:100%;max-width:1100px;display:grid;grid-template-columns:300px 1fr;gap:18px}
-  /* Sidebar */
-  .sidebar{background:var(--card);padding:16px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.03);box-shadow:0 12px 40px rgba(2,6,23,0.65)}
+  body{margin:0;background:linear-gradient(180deg,#071427 0%, #081628 100%);font-family:Inter,system-ui,Arial;color:#e8f0f6;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  .wrap{width:100%;max-width:1200px;display:grid;grid-template-columns:340px 1fr;gap:18px}
+  .sidebar{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:18px;border-radius:16px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 12px 40px rgba(2,6,23,0.65)}
   .brand{display:flex;gap:12px;align-items:center}
-  .logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:800;color:#022}
-  .brand .title{font-size:16px;font-weight:700}
-  .sidebar .controls{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:800;color:#042}
+  .brand .title{font-size:18px;font-weight:800;color:#e6ffe9}
+  .sidebar .controls{margin-top:16px;display:flex;flex-direction:column;gap:8px}
   .btn{padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
   .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
   .btn.primary{background:var(--accent);color:#042}
   select,input[type=text]{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:#e6f0f6}
 
-  /* Saved chats list */
-  .saved-list{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow:auto}
-  .saved-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
-  .saved-item .title{font-size:13px;color:#e6f0f6}
-  .saved-item small{color:var(--muted);font-size:11px}
-  .saved-actions button{background:transparent;border:none;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px}
+  .saved-list{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:36vh;overflow:auto}
+  .saved-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border-radius:10px;background:rgba(255,255,255,0.01);cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
 
-  /* Main panel */
   .panel{display:flex;flex-direction:column;gap:12px}
   .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
   h2{margin:0;color:#c7f3d3}
   .status{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:0.9rem}
-  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.45)}
-  .messages{height:64vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(2,6,23,0.45)}
+  .messages{height:60vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
   .message{max-width:78%;padding:12px 14px;border-radius:14px;word-wrap:break-word;position:relative}
   .user{align-self:flex-end;background:var(--bubble-user);color:#064;text-align:right;border-bottom-right-radius:6px;box-shadow:0 8px 20px rgba(16,185,129,0.06)}
   .assistant{align-self:flex-start;background:var(--bubble-assist);color:#0b2535;border:1px solid #eee;border-bottom-left-radius:6px}
   .meta{font-size:0.75rem;color:var(--muted);margin-top:8px}
   .system-note{font-size:13px;color:var(--muted);padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.01);display:inline-block}
 
-  /* composer */
   .composer{display:flex;gap:12px;align-items:center;padding:12px;border-radius:12px;background:var(--panel);border:1px solid rgba(255,255,255,0.03)}
   #userInput{flex:1;padding:12px;border-radius:999px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#e6f0f6;outline:none}
   .action-group{display:flex;gap:8px;align-items:center}
   .small-btn{padding:10px;border-radius:10px;border:none;cursor:pointer;background:rgba(255,255,255,0.03);color:#e6f0f6}
   .stop-btn{background:#ef4444;color:white;border-radius:10px;padding:10px 14px;border:none;cursor:pointer;font-weight:700;display:none}
 
-  /* formatted area */
   .fullAnswer{margin-top:6px;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.02)}
-  .formatted{margin-top:8px;padding:10px;border-radius:8px;background:#fafafa;border:1px solid #eee;color:#081}
+  .formatted{margin-top:8px;padding:12px;border-radius:8px;background:#fff;color:#081;border:1px solid #eee;white-space:pre-wrap}
   .summary{margin-top:6px;padding:8px;border-radius:8px;background:#fffbe6;border:1px solid #ffecb3;font-weight:700;color:#5a4b00}
 
-  @media (max-width:980px){
-    .wrap{grid-template-columns:1fr;padding:12px}
-    .sidebar{order:2}
-  }
+  .token-stream{font-family:monospace;font-size:0.9rem;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.02);color:var(--muted);min-width:220px;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .controls-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+
+  @media (max-width:980px){ .wrap{grid-template-columns:1fr;padding:12px} .sidebar{order:2} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <!-- Sidebar -->
   <div class="sidebar">
     <div class="brand">
       <div class="logo">F</div>
       <div>
         <div class="title">Farmer Chatbot</div>
-        <div style="font-size:12px;color:var(--muted)">Voice & Short Tips</div>
+        <div style="font-size:12px;color:var(--muted)">Concise answers • voice-ready • multi-language</div>
       </div>
     </div>
 
@@ -81,8 +68,23 @@
       <button id="clearSavedBtn" class="btn ghost" title="Clear saved chats">🗑️ Clear saved</button>
     </div>
 
-    <div style="margin-top:16px;font-size:13px;color:var(--muted);">Speak language (optional)</div>
+    <div style="margin-top:14px;font-size:13px;color:var(--muted)">Response length</div>
+    <select id="brevitySelect" style="width:100%;margin-top:8px;background-color:#022;">
+      <option value="short">Short (1–3 lines)</option>
+      <option value="medium" selected>Medium (few bullets)</option>
+      <option value="long">Long (detailed, but concise)</option>
+    </select>
+
+    <div style="margin-top:12px;font-size:13px;color:var(--muted)">TTS responsiveness</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+      <label style="font-size:12px;color:var(--muted)">Words per spoken chunk: <span id="chunkVal">8</span></label>
+      <input id="chunkSlider" type="range" min="3" max="16" value="8" />
+      <small style="color:var(--muted)">Lower → starts speaking earlier. Higher → longer continuous phrases.</small>
+    </div>
+
+    <div style="margin-top:14px;font-size:13px;color:var(--muted);">Preferred voice language (override)</div>
     <select id="langSelect" title="Override speech language" style="width:100%;margin-top:8px;background-color:#022;">
+      <option value="auto">Auto (detect)</option>
       <option value="en-US">English (en-US)</option>
       <option value="hi-IN">Hindi (hi-IN)</option>
       <option value="ta-IN">Tamil (ta-IN)</option>
@@ -104,41 +106,44 @@
     <div id="noSaved" style="margin-top:8px;color:var(--muted);font-size:13px">No saved chats yet</div>
   </div>
 
-  <!-- Main panel -->
   <div class="panel">
     <div class="topbar">
       <div style="display:flex;gap:12px;align-items:center">
         <h2>Ask the Farmer AI</h2>
-        <div class="status"><div class="system-note">Short, crisp replies</div></div>
+        <div class="status"><div class="system-note">Short, crisp, structured replies</div></div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div id="typing" class="system-note" style="display:none">Assistant is preparing a voice reply...</div>
+
+      <div style="display:flex;gap:10px;align-items:center">
+        <div id="typing" class="system-note" style="display:none">Assistant preparing a voice reply…</div>
+        <div id="tokenStream" class="token-stream" title="Live streaming preview">—</div>
       </div>
     </div>
 
     <div class="card messages" id="messages">
       <% messages.forEach(msg => { %>
         <div class="message <%= msg.role %> <%= msg.role==='user' ? 'user' : 'assistant' %>">
-          <strong><%= msg.role === 'user' ? 'You' : 'Assistant' %>:</strong>
-          <div style="margin-top:8px"><%- msg.text.replace(/\n/g, '<br>') %></div>
+	          <% if (msg.role === 'user') { %>
+	            <div style="font-size: 14px; font-weight: 600; color: #064;">You:</div>
+	          <% } else { %>
+	            <div style="font-size: 14px; font-weight: 600; color: #0b2535;">Assistant:</div>
+	          <% } %>
+	          <% const safeText = escape(msg.text).replace(/\n/g, '<br>'); %>
+	          <div style="margin-top:8px; line-height: 1.6; font-size: 1.05rem;"><%= safeText %></div>
           <div class="meta"><%= new Date(msg.createdAt).toLocaleString() %> (<%= msg.language %>)</div>
         </div>
       <% }) %>
     </div>
 
-    <div id="fullAnswerContainer" class="fullAnswer"></div>
-
     <div class="composer">
       <input type="text" id="userInput" placeholder="Ask your question..." autocomplete="off" />
       <div class="action-group">
         <button id="startMic" class="small-btn" title="Speak">🎤</button>
-        <button id="sendBtn" class="btn primary">Send</button>
+        <button id="sendBtn" class="btn primary" type="button">Send</button>
         <button id="stopBtn" class="stop-btn" title="Stop generation">Stop</button>
       </div>
     </div>
   </div>
 </div>
-
 <script>
 // ===== DOM =====
 const messagesDiv = document.getElementById('messages');
@@ -151,12 +156,13 @@ const clearSavedBtn = document.getElementById('clearSavedBtn');
 const savedList = document.getElementById('savedList');
 const noSaved = document.getElementById('noSaved');
 const locStatus = document.getElementById('locStatus');
-const weatherStatus = document.getElementById('weatherStatus');
-const timeStatus = document.getElementById('timeStatus');
 const langSelect = document.getElementById('langSelect');
 const sendBtn = document.getElementById('sendBtn');
 const stopBtn = document.getElementById('stopBtn');
-const fullAnswerContainer = document.getElementById('fullAnswerContainer');
+const tokenStream = document.getElementById('tokenStream');
+const brevitySelect = document.getElementById('brevitySelect');
+const chunkSlider = document.getElementById('chunkSlider');
+const chunkVal = document.getElementById('chunkVal');
 
 let currentLocation = null;
 let voicesReady = false;
@@ -164,354 +170,294 @@ let availableVoices = [];
 let stopRequested = false;
 let currentFetchController = null;
 
-// language maps
-const normalizeMap = { eng:'en-US', hin:'hi-IN', tam:'ta-IN', tel:'te-IN', kn:'kn-IN', fra:'fr-FR', spa:'es-ES' };
+// tts queue/status
+const ttsQueue = [];
+let ttsBusy = false;
+
+// dynamic chunk size (client-side ref)
+let CLIENT_WORDS_THRESHOLD = parseInt(chunkSlider.value || '8', 10);
+
+// language helpers
+const normalizeMap = { eng:'en-US', hin:'hi-IN', ta:'ta-IN', tel:'te-IN', kn:'kn-IN', fra:'fr-FR', spa:'es-ES' };
+const indianLanguages = ['hi-IN','ta-IN','te-IN','kn-IN'];
 const languageFriendly = { 'en-US':'English', 'hi-IN':'Hindi', 'ta-IN':'Tamil', 'te-IN':'Telugu', 'kn-IN':'Kannada', 'fr-FR':'French', 'es-ES':'Spanish' };
 const unknownLangMsg = {
   'en-US': "I don't know that language.",
   'hi-IN': "मुझे वह भाषा नहीं आती।",
-  'ta-IN': "எனக்கு அந்த மொழி தெரியவில்லை.",
+  'ta-IN': "எனக்கு அந்த மொழி தெரியாது.",
   'te-IN': "నాకు ఆ భాష తెలియదు.",
-  'kn-IN': "ನನಗೆ ಆ ಭಾಷೆ ಗೊತ್ತಿಲ್ಲ.",
+  'kn-IN': "ನನಗೆ ಆ ಭಾಷೆ ತಿಳಿದಿಲ್ಲ.",
   'fr-FR': "Je ne connais pas cette langue.",
   'es-ES': "No conozco ese idioma."
 };
 
-function normalizeLang(code){
-  if(!code) return null;
-  code = String(code).trim();
-  if(code.includes('-')) return code;
-  if(normalizeMap[code]) return normalizeMap[code];
-  if(code.length===2){
-    const map2 = { en:'en-US', hi:'hi-IN', ta:'ta-IN', te:'te-IN', kn:'kn-IN', fr:'fr-FR', es:'es-ES' };
-    if(map2[code]) return map2[code];
-  }
-  return code;
-}
-function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-function prettyLangLabel(bcp){ if(!bcp) return ''; return languageFriendly[bcp] ? `${languageFriendly[bcp]} (${bcp})` : bcp; }
+// server-chunking flag and dedupe helper
+let serverChunking = false;
+let lastSpokenImmediate = '';
 
-function appendMessage(role,text,meta, langCode){
+// --- TTS Logic ---
+function loadVoices() {
+  return new Promise(resolve => {
+    const check = () => {
+      availableVoices = window.speechSynthesis.getVoices();
+      if (availableVoices.length > 0) {
+        voicesReady = true;
+        resolve();
+      } else setTimeout(check, 100);
+    };
+    window.speechSynthesis.onvoiceschanged = check;
+    check();
+  });
+}
+
+function getVoice(locale) {
+    if (!voicesReady) return null;
+    const normLocale = String(locale || '').replace('_','-');
+
+    // Exact match
+    let voice = availableVoices.find(v => v.lang.toLowerCase() === normLocale.toLowerCase());
+    if (voice) return voice;
+
+    // Try any Indian voice
+    voice = availableVoices.find(v => ['hi-IN','ta-IN','te-IN','kn-IN'].includes(v.lang));
+    if (voice) return voice;
+
+    // Fallback to English
+    return availableVoices.find(v => v.lang === 'en-US') || availableVoices[0];
+}
+
+
+function speak(text, locale) {
+  if (!window.speechSynthesis || !voicesReady) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.voice = getVoice(locale);
+  utterance.lang = utterance.voice ? utterance.voice.lang : locale;
+  window.speechSynthesis.speak(utterance);
+  return utterance;
+}
+
+function speakAndWait(text, locale) {
+  return new Promise(resolve => {
+    const utterance = speak(text, locale);
+    if (!utterance) return resolve();
+    utterance.onend = () => resolve();
+    utterance.onerror = () => resolve();
+  });
+}
+
+function enqueueTTS(text, locale) {
+  ttsQueue.push({ text, locale });
+  processTTSQueue();
+}
+
+function enqueueTTSImmediate(text, locale) {
+  ttsQueue.unshift({ text, locale });
+  processTTSQueue();
+}
+
+function processTTSQueue() {
+  if (ttsBusy || ttsQueue.length === 0) return;
+  ttsBusy = true;
+  const { text, locale } = ttsQueue.shift();
+  const utterance = speak(text, locale);
+  if (!utterance) { ttsBusy = false; if (ttsQueue.length>0) processTTSQueue(); return; }
+
+  utterance.onend = () => {
+    ttsBusy = false;
+    if (!currentFetchController && ttsQueue.length === 0) setUiBusy(false,false);
+    if (ttsQueue.length>0) processTTSQueue();
+  };
+  utterance.onerror = (e) => { console.error('TTS error:', e); ttsBusy=false; processTTSQueue(); };
+}
+
+function cancelTTS() {
+  window.speechSynthesis.cancel();
+  ttsQueue.length = 0;
+  ttsBusy = false;
+  lastSpokenImmediate = '';
+}
+
+// --- Utility ---
+function escapeHtml(unsafe) {
+  return unsafe.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function normalizeLang(lang) {
+  if (!lang) return null;
+  const norm = lang.toLowerCase().split('-')[0];
+  return normalizeMap[norm] || lang;
+}
+function getPreferredSpeechLocale(assistantLangRaw) {
+  const selectedLang = langSelect.value;
+  if (selectedLang !== 'auto') return selectedLang;
+  const assistantNorm = normalizeLang(assistantLangRaw);
+  return assistantNorm || (navigator.language || 'en-US');
+}
+function appendMessage(role, text, createdAt, language) {
   const d = document.createElement('div');
-  d.className = 'message ' + (role==='You' ? 'user' : 'assistant');
-  d.innerHTML = `<strong>${role}:</strong><div style="margin-top:8px">${escapeHtml(text).replace(/\n/g,'<br>')}</div>
-                 <div class="meta">${escapeHtml(meta || new Date().toLocaleString())} ${ langCode ? ` ${prettyLangLabel(normalizeLang(langCode))}` : ''}</div>`;
+  d.className = 'message ' + (role==='user'?'user':'assistant');
+  d.innerHTML = `${role==='user'?'<strong>You:</strong>':''}
+                 <div style="margin-top:8px">${escapeHtml(text).replace(/\n/g,'<br>')}</div>
+                 <div class="meta">${escapeHtml(createdAt)} (${languageFriendly[language] || language})</div>`;
   messagesDiv.appendChild(d);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
-
-// detect Indic script languages
-function detectScriptLocale(s){
-  if(!s) return null;
-  if(/[\u0900-\u097F]/.test(s)) return 'hi-IN';
-  if(/[\u0B80-\u0BFF]/.test(s)) return 'ta-IN';
-  if(/[\u0C00-\u0C7F]/.test(s)) return 'te-IN';
-  if(/[\u0C80-\u0CFF]/.test(s)) return 'kn-IN';
-  return null;
+function setUiBusy(isFetching, isSpeaking){
+  const busy = isFetching || isSpeaking;
+  userInput.disabled=busy;
+  sendBtn.style.display=busy?'none':'block';
+  stopBtn.style.display=busy?'block':'none';
+  typingDiv.style.display=isFetching?'block':'none';
+  startMic.disabled=busy;
+  newChatBtn.disabled=busy;
+  saveChatBtn.disabled=busy;
+  clearSavedBtn.disabled=busy;
 }
 
-function setUiBusy(isBusy){
-  if(isBusy){
-    typingDiv.style.display='inline-block';
-    stopBtn.style.display='inline-block';
-    sendBtn.disabled = true;
-    userInput.disabled = true;
-  } else {
-    typingDiv.style.display='none';
-    stopBtn.style.display='none';
-    sendBtn.disabled = false;
-    userInput.disabled = false;
-  }
-}
+// --- Streaming ---
+let fullReply='', ttsBuffer='', assistantLangRaw=null, bodyDiv=null, hasStrippedPrefix=false;
 
-/* STOP behavior: abort fetch, cancel TTS, clear queue, mark stopped bubble */
-function cancelOngoing(){
-  stopRequested = true;
-
-  // abort server request
-  if(currentFetchController){ try{ currentFetchController.abort(); } catch(e){} currentFetchController=null; }
-
-  // cancel browser TTS
-  try { if(window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e){}
-
-  // clear TTS queue (defined later)
-  try { ttsQueue.length = 0; } catch(e){}
-
-  // annotate assistant's last bubble as stopped
-  const last = Array.from(messagesDiv.querySelectorAll('.message.assistant')).pop();
-  if(last){
-    const meta = last.querySelector('.meta');
-    if(meta && !meta.textContent.includes('(stopped)')) meta.textContent = `${meta.textContent} (stopped)`;
-  } else {
-    appendMessage('Assistant','(stopped)', new Date().toLocaleString());
-  }
-  setUiBusy(false);
-}
-
-function loadVoices(){
-  return new Promise(resolve=>{
-    const synth = window.speechSynthesis;
-    let voices = synth.getVoices();
-    if(voices.length){ availableVoices = voices; voicesReady = true; resolve(); }
-    else synth.onvoiceschanged = ()=>{ availableVoices = synth.getVoices(); voicesReady = true; resolve(); };
-  });
-}
-
-function getPreferredSpeechLocale(serverLocale){
-  const override = langSelect.value;
-  if(override && override !== 'auto') return override;
-  const normalized = normalizeLang(serverLocale);
-  if(normalized) return normalized;
-  return navigator.language || 'en-US';
-}
-
-function speakAndWait(text, locale){
-  return new Promise(resolve=>{
-    if(!text){ resolve(); return; }
-    try {
-      // ensure previous utterances are cancelled so we don't overlap
-      if(window.speechSynthesis && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = locale || navigator.language || 'en-US';
-      utter.rate = 0.95; utter.pitch = 1;
-      const voices = window.speechSynthesis.getVoices();
-      if(voices && voices.length){
-        const prefix = (utter.lang || '').split('-')[0];
-        const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith(prefix));
-        if(voice) utter.voice = voice;
-      }
-      utter.onend = ()=> resolve();
-      utter.onerror = ()=> resolve();
-      window.speechSynthesis.speak(utter);
-    } catch(e){ resolve(); }
-  });
-}
-
-// ---- TTS queue helpers (sequential speaking of partials) ----
-const ttsQueue = [];
-let ttsBusy = false;
-
-function enqueueTTS(text, locale){
-  if(!text || !text.trim()) return;
-  // do not enqueue if stop was requested (prevents old queue re-appearing)
-  if(stopRequested) return;
-  ttsQueue.push({ text: text.trim(), locale });
-  if(!ttsBusy) processTTSQueue();
-}
-
-async function processTTSQueue(){
-  if(ttsBusy) return;
-  ttsBusy = true;
-  while(ttsQueue.length){
-    if(stopRequested){
-      ttsQueue.length = 0;
-      break;
-    }
-    const item = ttsQueue.shift();
-    if(!item) continue;
-    try {
-      await speakAndWait(item.text, item.locale);
-      await new Promise(r => setTimeout(r, 80));
-    } catch(e){
-      if(stopRequested){ ttsQueue.length = 0; break; }
+function handleStreamingToken(token, language) {
+  // Strip any prefix like "Assistant: " or "Seva: "
+  if (!hasStrippedPrefix) {
+    const prefixRegex = /^(Assistant|Seva):\s*/i;
+    const combined = fullReply + token;
+    if (prefixRegex.test(combined)) {
+      token = combined.replace(prefixRegex, '');
+      fullReply = '';
+      hasStrippedPrefix = true;
+    } else if (combined.length > 20) {
+      hasStrippedPrefix = true;
     }
   }
-  ttsBusy = false;
-}
 
-function getLocationPromise(timeout=8000){
-  return new Promise(resolve=>{
-    if(!navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      err => { console.warn('Geolocation error', err); resolve(null); },
-      { timeout }
-    );
-  });
-}
+  fullReply += token;
 
-async function initAutoDetect(){
-  locStatus.textContent = 'Location: detecting…';
-  currentLocation = await getLocationPromise();
-  if(!currentLocation){
-    locStatus.textContent = 'Location: unavailable (allow location/time)';
-    return;
-  }
-  locStatus.textContent = `Location: ${currentLocation.lat.toFixed(4)}, ${currentLocation.lon.toFixed(4)}`;
-}
-
-// short summary util
-function makeShortSummary(fullText){
-  if(!fullText) return '';
-  const sentences = fullText.trim().split(/(?<=[。.!?])\s+|(?<=\n)/u);
-  if(sentences && sentences[0] && sentences[0].length>10) return sentences[0].trim();
-  return fullText.trim().slice(0,120) + (fullText.length>120?'…':'');
-}
-
-function clearFormattedArea(){ fullAnswerContainer.innerHTML = ''; }
-
-/*
-  showFormattedAnswer(fullText, langBcp, showSummary=false)
-  - By default show only the formatted (full) reply and language label.
-  - If showSummary === true, also show the short summary (yellow box).
-  This prevents the short summary from appearing while speech is ongoing.
-*/
-function showFormattedAnswer(fullText, langBcp, showSummary = false){
-  clearFormattedArea();
-  const label = document.createElement('div'); label.className='meta'; label.style.marginTop='6px'; label.innerText = langBcp ? prettyLangLabel(langBcp) : '';
-  const f = document.createElement('div'); f.className='formatted'; f.innerText = fullText;
-  fullAnswerContainer.appendChild(label);
-  fullAnswerContainer.appendChild(f);
-  if(showSummary){
-    const s = document.createElement('div'); s.className='summary'; s.innerText = 'Short: ' + makeShortSummary(fullText);
-    fullAnswerContainer.appendChild(s);
-  }
-  fullAnswerContainer.scrollIntoView({ behavior:'smooth', block:'end' });
-}
-
-// --------- streaming function ----------
-async function sendStreamed(text){
-  if(!text?.trim()) return;
-
-  // Ensure previous TTS + queue are cleared so old speech won't resume
-  try { ttsQueue.length = 0; } catch(e){}
-  try { if(window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e){}
-
-  appendMessage('You', text, new Date().toLocaleString());
-  userInput.value='';
-  setUiBusy(true);
-  stopRequested = false;
-  clearFormattedArea();
-
-  const scriptLocale = detectScriptLocale(text);
-  const langOverrideForRequest = scriptLocale || langSelect.value || 'auto';
-
-  const controller = new AbortController();
-  currentFetchController = controller;
-
-  const body = { prompt: text, role:'user', location: currentLocation, langOverride: langOverrideForRequest };
-  let res;
-  try{
-    res = await fetch('/stream',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body),
-      signal: controller.signal
-    });
-  }catch(err){
-    if(err.name === 'AbortError'){
-      // user cancelled locally
-      cancelOngoing();
-      return;
-    }
-    appendMessage('Assistant',`Error: ${err.message || 'Network error'}`, new Date().toLocaleString());
-    setUiBusy(false);
-    currentFetchController=null;
-    return;
+  // Remove already spoken immediate text from buffer to avoid duplicates
+  if (serverChunking && lastSpokenImmediate && ttsBuffer.startsWith(lastSpokenImmediate)) {
+    ttsBuffer = ttsBuffer.substring(lastSpokenImmediate.length);
   }
 
-  if(!res.ok){
-    const textErr = await res.text().catch(()=> 'Server error');
-    appendMessage('Assistant',`Error: ${textErr}`, new Date().toLocaleString());
-    setUiBusy(false);
-    currentFetchController=null;
-    return;
-  }
+  ttsBuffer += token;
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder('utf-8');
-  let buffer = '';
-  let fullReply = '';
-  let assistantLangRaw = null;
-
-  const metaTime = new Date().toLocaleString();
-  const placeholder = document.createElement('div');
-  placeholder.className = 'message assistant';
-  placeholder.innerHTML = `<strong>Assistant:</strong><div class="assistant-body" style="margin-top:8px"></div><div class="meta">${escapeHtml(metaTime)}</div>`;
-  messagesDiv.appendChild(placeholder);
+  // Update UI
+  bodyDiv.innerHTML = escapeHtml(fullReply).replace(/\n/g,'<br>');
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  const bodyDiv = placeholder.querySelector('.assistant-body');
+  tokenStream.textContent = fullReply.trim().slice(0,220) + (fullReply.trim().length>220 ? '…' : '');
 
-  let currentText = '';
+  // CLIENT-SIDE CHUNKING (only if server NOT doing sentence_partial)
+  if (!serverChunking) {
+    const words = ttsBuffer.replace(/[\s\n]+/g, ' ').trim().split(' ').filter(Boolean);
+    if (words.length >= CLIENT_WORDS_THRESHOLD) {
+      const lastSpace = ttsBuffer.lastIndexOf(' ');
+      let chunkToSpeak = ttsBuffer;
+      let remainder = '';
+
+      if (lastSpace > -1) {
+        chunkToSpeak = ttsBuffer.substring(0, lastSpace + 1);
+        remainder = ttsBuffer.substring(lastSpace + 1);
+      }
+
+      if (chunkToSpeak.trim()) {
+        const localeToSpeak = getPreferredSpeechLocale(language);
+        enqueueTTS(chunkToSpeak.trim(), localeToSpeak);
+        ttsBuffer = remainder;
+      }
+    }
+  }
+}
+
+
+function cancelOngoing(){
+  stopRequested=true;
+  if(currentFetchController) currentFetchController.abort();
+  cancelTTS();
+  lastSpokenImmediate='';
+  setUiBusy(false,false);
+  if(fullReply.trim()) bodyDiv.innerHTML=escapeHtml(fullReply).replace(/\n/g,'<br>');
+  tokenStream.textContent='—';
+}
+
+// --- Send and streaming ---
+async function sendStreamed(prompt){
+  if(currentFetchController) return;
+  cancelTTS();
+  const scriptLocale=navigator.language||'en-US';
+  const metaTime=new Date().toLocaleString();
+  const langOverride=langSelect.value||'auto';
+  let userLang = langOverride!=='auto'?langOverride:'en-US';
+  appendMessage('user',prompt,metaTime,userLang);
+
+  fullReply=''; ttsBuffer=''; assistantLangRaw=null; stopRequested=false; serverChunking=false; lastSpokenImmediate='';
+  currentFetchController=new AbortController();
+  setUiBusy(true,false);
+  tokenStream.textContent='...';
+  hasStrippedPrefix=false;
+
+  const assistantDiv=document.createElement('div');
+  assistantDiv.className='message assistant';
+  assistantDiv.innerHTML=`<div id="streamingBody"></div><div class="meta">${metaTime} (detecting language...)</div>`;
+  messagesDiv.appendChild(assistantDiv);
+  bodyDiv = assistantDiv.querySelector('#streamingBody');
+  const metaDiv = assistantDiv.querySelector('.meta');
+
+  const payload={ prompt, location:currentLocation, langOverride, brevity:brevitySelect.value, speechChunkWords:CLIENT_WORDS_THRESHOLD };
 
   try{
+    const response=await fetch('/stream',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload), signal:currentFetchController.signal });
+    if(!response.ok){ const errorText=await response.text(); bodyDiv.innerHTML=`Error: ${escapeHtml(errorText)}`; setUiBusy(false,false); return; }
+
+    const reader=response.body.getReader();
+    const decoder=new TextDecoder();
+    let buffer='';
+
     while(true){
       if(stopRequested) break;
-      const { value, done } = await reader.read();
+      const {value, done}=await reader.read();
       if(value){
-        buffer += decoder.decode(value, { stream:true });
+        buffer+=decoder.decode(value,{stream:true});
         let idx;
-        while((idx = buffer.indexOf('\n\n')) !== -1){
+        while((idx=buffer.indexOf('\n\n'))!==-1){
           if(stopRequested) break;
-          const block = buffer.slice(0, idx).trim();
-          buffer = buffer.slice(idx+2);
-          const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
-          const dataLine = lines.find(l=>l.startsWith('data:'));
+          const block=buffer.slice(0,idx).trim();
+          buffer=buffer.slice(idx+2);
+          const lines=block.split('\n').map(l=>l.trim()).filter(Boolean);
+          const dataLine=lines.find(l=>l.startsWith('data:'));
           if(!dataLine) continue;
+
           let obj;
-          try{
-            obj = JSON.parse(dataLine.replace(/^data:\s*/, ''));
-          }catch(e){
-            console.warn('Failed to parse SSE data', dataLine, e);
-            continue;
-          }
+          try{ obj=JSON.parse(dataLine.replace(/^data:\s*/,'')); }catch(e){ console.warn('Failed to parse SSE data',dataLine,e); continue; }
 
-          // token (visual streaming)
+          if(typeof obj.server_chunking!=='undefined') serverChunking=!!obj.server_chunking;
+
           if(obj.token){
-            assistantLangRaw = assistantLangRaw || obj.language || null;
-            currentText += obj.token;
-            fullReply += obj.token;
-            bodyDiv.innerHTML = escapeHtml(currentText).replace(/\n/g,'<br>');
-            const assistantLangNorm = normalizeLang(assistantLangRaw);
-            if(assistantLangNorm){
-              const metaEl = placeholder.querySelector('.meta');
-              metaEl.textContent = `${escapeHtml(metaTime)} ${assistantLangNorm ? `(${prettyLangLabel(assistantLangNorm)})` : ''}`;
-            }
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            assistantLangRaw=assistantLangRaw||obj.language||userLang||scriptLocale;
+            metaDiv.textContent=`${metaTime} (${languageFriendly[getPreferredSpeechLocale(assistantLangRaw)]||getPreferredSpeechLocale(assistantLangRaw)})`;
+            handleStreamingToken(obj.token, assistantLangRaw);
           }
 
-          // server-sent partial chunks for TTS (speak in parallel as they arrive)
           if(obj.sentence_partial){
-            const localeToSpeak = getPreferredSpeechLocale(obj.language || assistantLangRaw);
-            enqueueTTS(obj.sentence_partial, localeToSpeak);
+            const s=obj.sentence_partial.trim();
+            if(s && s!==lastSpokenImmediate){
+              lastSpokenImmediate=s;
+              const localeToSpeak=getPreferredSpeechLocale(obj.language||assistantLangRaw);
+              enqueueTTSImmediate(s, localeToSpeak);
+              if(serverChunking && ttsBuffer.startsWith(s)) ttsBuffer=ttsBuffer.substring(s.length).trim();
+            }
           }
 
           if(obj.error){
-            // treat server-side abort as normal stop
-            if(obj.error === 'aborted'){
-              stopRequested = true;
-              cancelOngoing();
-              break;
-            }
-            bodyDiv.innerHTML += `<br>Error: ${escapeHtml(obj.error)}`;
+            if(obj.error==='aborted'){ stopRequested=true; cancelOngoing(); break; }
+            bodyDiv.innerHTML+=`<br>Error: ${escapeHtml(obj.error)}`;
           }
 
           if(obj.done){
-            stopRequested = false;
-            currentFetchController = null;
-            bodyDiv.innerHTML = escapeHtml(currentText).replace(/\n/g,'<br>');
-
-            const trimmed = fullReply.trim();
-            const assistantNorm = normalizeLang(assistantLangRaw);
-
-            if(!trimmed){
-              const userLocale = scriptLocale || assistantNorm || (navigator.language || 'en-US');
-              const norm = normalizeLang(userLocale) || 'en-US';
-              const msg = unknownLangMsg[norm] || unknownLangMsg['en-US'];
-              appendMessage('Assistant', msg, metaTime, norm);
-              // final display + summary
-              showFormattedAnswer(msg, norm, true);
-              setUiBusy(false);
-              await speakAndWait(msg, norm);
-              return;
-            }
-
-            const assistantBcp = assistantNorm || scriptLocale || (navigator.language || 'en-US');
-            // show formatted reply; show summary because generation finished
-            showFormattedAnswer(fullReply.trim(), assistantBcp, true);
-
-            // Do not re-speak full reply (partials were spoken). If you prefer, call speakAndWait(fullReply.trim(), ...).
-            setUiBusy(false);
+            stopRequested=false;
+            currentFetchController=null;
+            if(ttsBuffer.trim()){ enqueueTTSImmediate(ttsBuffer.trim(),getPreferredSpeechLocale(assistantLangRaw)); ttsBuffer=''; }
+            const trimmed=fullReply.trim();
+            if(!trimmed){ const norm=normalizeLang(scriptLocale||userLang)||'en-US'; const msg=unknownLangMsg[norm]||unknownLangMsg['en-US']; appendMessage('Assistant',msg,metaTime,norm); setUiBusy(false,false); await speakAndWait(msg,norm); tokenStream.textContent='—'; return; }
+            setUiBusy(false, ttsBusy||ttsQueue.length>0);
+            tokenStream.textContent=fullReply.trim().slice(0,220)+(fullReply.trim().length>220?'…':'');
             return;
           }
         }
@@ -519,88 +465,55 @@ async function sendStreamed(text){
       if(done) break;
     }
   }catch(e){
-    if(e && e.name === 'AbortError'){
-      // normal if aborted
-    } else {
-      console.error('stream read error', e);
-      bodyDiv.innerHTML += `<br>Error during stream: ${escapeHtml(String(e.message || e))}`;
-    }
-  } finally {
-    currentFetchController = null;
-  }
+    if(e && e.name!=='AbortError'){ console.error('stream read error',e); bodyDiv.innerHTML+=`<br>Error during stream: ${escapeHtml(String(e.message||e))}`; }
+  }finally{ currentFetchController=null; }
 
-  // stream ended without explicit done
-  setUiBusy(false);
-  if(currentText.trim()){
-    bodyDiv.innerHTML = escapeHtml(currentText).replace(/\n/g,'<br>');
-    const assistantNorm = normalizeLang(assistantLangRaw);
-    showFormattedAnswer(fullReply.trim(), assistantNorm || scriptLocale || (navigator.language || 'en-US'), true);
-    const localeToSpeak = getPreferredSpeechLocale(assistantNorm);
-    await speakAndWait(fullReply.trim(), localeToSpeak);
-  } else {
-    const userLocale = scriptLocale || (navigator.language || 'en-US');
-    const norm = normalizeLang(userLocale) || 'en-US';
-    const msg = unknownLangMsg[norm] || unknownLangMsg['en-US'];
-    appendMessage('Assistant', msg, new Date().toLocaleString(), norm);
-    showFormattedAnswer(msg, norm, true);
-    await speakAndWait(msg, norm);
-  }
+  setUiBusy(false, ttsBusy||ttsQueue.length>0);
+  if(fullReply.trim()){ bodyDiv.innerHTML=escapeHtml(fullReply).replace(/\n/g,'<br>'); if(ttsBuffer.trim()){ enqueueTTSImmediate(ttsBuffer.trim(), getPreferredSpeechLocale(assistantLangRaw)); ttsBuffer=''; } tokenStream.textContent=fullReply.trim().slice(0,220)+(fullReply.trim().length>220?'…':''); }
+  else{ const norm=normalizeLang(scriptLocale||userLang)||'en-US'; const msg=unknownLangMsg[norm]||unknownLangMsg['en-US']; appendMessage('Assistant',msg,new Date().toLocaleString(),norm); await speakAndWait(msg,norm); tokenStream.textContent='—'; }
 }
 
-// mic
+// --- Mic ---
 startMic.addEventListener('click', async ()=>{
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const Rec=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Rec){ alert('Speech recognition not supported.'); return; }
-  const rec = new Rec();
-  const recLang = (langSelect.value && langSelect.value !== 'auto') ? langSelect.value : (navigator.language || 'en-US');
-  rec.lang = recLang;
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
+  const rec=new Rec();
+  const recLang=(langSelect.value && langSelect.value!=='auto') ? langSelect.value : (navigator.language||'en-US');
+  rec.lang=recLang;
+  rec.interimResults=false;
+  rec.maxAlternatives=1;
 
-  startMic.textContent = 'Listening...';
-  rec.onend = ()=> startMic.textContent = '🎤';
-  rec.onerror = ()=> startMic.textContent='🎤';
+  startMic.textContent='Listening...';
+  rec.onend=()=>startMic.textContent='🎤';
+  rec.onerror=()=>startMic.textContent='🎤';
 
-  rec.onresult = async ev=>{
-    const t = ev.results[0][0].transcript;
-    await sendStreamed(t);
-  };
+  rec.onresult=async ev=>{ const t=ev.results[0][0].transcript; await sendStreamed(t); };
   rec.start();
 });
 
-// send
-sendBtn.addEventListener('click', async e=>{
-  e.preventDefault();
-  if(stopBtn.style.display !== 'none') return; // if streaming, ignore sends
-  const t = userInput.value.trim();
-  if(t) await sendStreamed(t);
+// --- Send button ---
+async function handleSend(){
+  const t=userInput.value.trim();
+  if(!t) return;
+  userInput.value='';
+  await sendStreamed(t);
+}
+sendBtn.addEventListener('click',e=>{ e.preventDefault(); if(getComputedStyle(stopBtn).display!=='none') return; handleSend(); });
+userInput.addEventListener('keydown',async e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); if(getComputedStyle(stopBtn).display!=='none') return; handleSend(); } });
+stopBtn.addEventListener('click',e=>{ e.preventDefault(); cancelOngoing(); });
+
+// --- New chat ---
+newChatBtn.addEventListener('click',async ()=>{
+  if(!confirm('Clear chat history and memory on server and local view?')) return;
+  try{
+    const resp=await fetch('/new-chat',{ method:'POST', headers:{'Content-Type':'application/json'} });
+    if(!resp.ok) throw new Error('Server error');
+    messagesDiv.innerHTML=''; tokenStream.textContent='—';
+    alert('Server and local chat cleared.');
+  }catch(e){ console.error(e); alert('Failed to clear server chat — check server logs.'); }
 });
 
-// stop
-stopBtn.addEventListener('click', e=>{
-  e.preventDefault();
-  cancelOngoing();
-});
-
-// enter key handling
-document.addEventListener('keydown', async (e)=>{
-  if(e.key === 'Enter' && !e.shiftKey){
-    if(stopBtn.style.display !== 'none') return;
-    e.preventDefault();
-    const t = userInput.value.trim();
-    if(t) await sendStreamed(t);
-  }
-});
-
-// new chat
-newChatBtn.addEventListener('click', async ()=>{
-  if(!confirm('Clear chat history and memory (local view only)?')) return;
-  // clear DOM list (does not clear server stored messages)
-  messagesDiv.innerHTML = '';
-  fullAnswerContainer.innerHTML = '';
-});
-
-// ----------------- Saved chats (localStorage) -----------------
+// --- Saved chats ---
 const SAVED_KEY = 'farmer_chat_saved_sessions_v1';
 
 function loadSavedChats(){
@@ -653,6 +566,7 @@ function renderSavedList(){
     });
   });
 }
+
 
 function saveCurrentChat(){
   // read messages in DOM (user + assistant)
@@ -716,11 +630,97 @@ saveChatBtn.addEventListener('click', ()=>{
 // init saved list
 renderSavedList();
 
-// ----------------- init -----------------
+clearSavedBtn.addEventListener('click', ()=>{ if(confirm('Delete all saved chats?')){ localStorage.removeItem(SAVED_KEY); renderSavedList(); } });
+saveChatBtn.addEventListener('click', ()=>{ saveCurrentChat(); });
+renderSavedList();
+
+chunkSlider.addEventListener('input', ()=>{ chunkVal.textContent=chunkSlider.value; CLIENT_WORDS_THRESHOLD=parseInt(chunkSlider.value,10); });
+
+// --- Init ---
 window.addEventListener('load', async ()=>{
   if(window.speechSynthesis) await loadVoices();
   initAutoDetect();
 });
+
+async function initAutoDetect() {
+  locStatus.textContent = 'Location: detecting…';
+
+  currentLocation = await getLocationPromise();
+
+  if (!currentLocation) {
+    locStatus.textContent = 'Location: unavailable (allow location/time)';
+    return;
+  }
+
+  locStatus.textContent = `Location: ${currentLocation.lat.toFixed(4)}, ${currentLocation.lon.toFixed(4)}`;
+
+  // Optionally, you can also initialize other data here, e.g., time, weather, or language
+  // Example: get current time at user's location
+  const now = new Date();
+  timeStatus.textContent = `Local time: ${now.toLocaleTimeString()}`;
+}
+
+// Helper to get geolocation
+async function getLocationPromise() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) return resolve(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        });
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        resolve(null);
+      },
+      { timeout: 5000, enableHighAccuracy: false }
+    );
+  });
+}
+async function getWeather(lat, lon) {
+  const API_KEY = OPENWEATHERMAP_API_KEY; // replace with your key
+  if (!lat || !lon) return null;
+
+  try {
+    const resp = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`);
+    if (!resp.ok) throw new Error('Weather API error');
+    const data = await resp.json();
+    return {
+      temp: data.main.temp,
+      description: data.weather[0].description,
+      city: data.name,
+    };
+  } catch (e) {
+    console.error('Weather fetch failed', e);
+    return null;
+  }
+}
+async function initAutoDetect() {
+  locStatus.textContent = 'Detecting location…';
+  currentLocation = await getLocationPromise();
+
+  if (!currentLocation) {
+    locStatus.textContent = 'Location unavailable';
+    weatherStatus.textContent = '';
+    return;
+  }
+
+  locStatus.textContent = `Lat: ${currentLocation.lat.toFixed(4)}, Lon: ${currentLocation.lon.toFixed(4)}`;
+
+  const weather = await getWeather(currentLocation.lat, currentLocation.lon);
+  if (weather) {
+    weatherStatus.textContent = `${weather.city}: ${weather.temp}°C, ${weather.description}`;
+  } else {
+    weatherStatus.textContent = 'Weather unavailable';
+  }
+}
+
+
+
 </script>
+
 </body>
 </html>

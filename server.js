@@ -152,7 +152,7 @@ Current context:
     // Ollama settings
     const ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
     // DEFAULT MODEL: use the exact model name shown by `ollama list`. Example: 'llama2:7b-chat'
-    const model = process.env.OLLAMA_MODEL || 'llama2:7b-chat';
+    const model = process.env.OLLAMA_MODEL || 'qwen2.5:1.5b-instruct';
 
     const requestUrl = `${ollamaHost}/api/generate`;
     console.log('OLLAMA requestUrl=', requestUrl);
